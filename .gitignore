@@ -1,0 +1,6 @@
+*.out
+*.raw
+*.result
+*.cycles
+*.diff
+cpu
