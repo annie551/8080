@@ -47,7 +47,7 @@ module main();
         //     halt<=1;
         // end
         pc<=pc+2;
-
+        halt<=1;
 
         // if(print && halt==0) begin
         //     $write("%c",(reg_wdata&8'b11111111));
