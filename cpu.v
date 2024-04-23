@@ -14,6 +14,8 @@ module main();
 
     reg halt = 0;
 
+    reg[15:0] pc=0;
+
     counter ctr(halt,clk);
 
 
@@ -40,18 +42,16 @@ module main();
     regs registers(clk,reg_raddr0[3:0],ra_init[15:0],reg_raddr1[3:0],rt_init[15:0],reg_wen,reg_waddr[3:0],reg_wdata[15:0]);
 
 
-
-
     always @(posedge clk) begin
-        if(NotValid)begin
-            halt<=1;
-        end
+        // if(NotValid)begin
+        //     halt<=1;
+        // end
         pc<=pc+2;
 
 
-        if(print && halt==0) begin
-            $write("%c",(reg_wdata&8'b11111111));
-        end
+        // if(print && halt==0) begin
+        //     $write("%c",(reg_wdata&8'b11111111));
+        // end
     end
 
 
