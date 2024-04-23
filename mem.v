@@ -3,9 +3,13 @@
 module mem(input clk,
     input [15:1]raddr0_, output [15:0]rdata0_,
     input [15:1]raddr1_, output [15:0]rdata1_,
-    input wen, input [15:1]waddr, input [15:0]wdata);
+    input wen, input [15:1]waddr, input [15:0]wdata,
+    input pop, input push, input[15:0] push_data, input swap,
+    output out);
 
-    reg [15:0]data[0:16'h7fff];
+    wire out;
+
+    reg [7:0]data[0:16'hffff];
 
     /* Simulation -- read initial content from file */
     initial begin
