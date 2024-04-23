@@ -27,10 +27,11 @@ module main();
     wire mem_wen;
     wire [15:0]mem_waddr;
     wire [15:0]mem_wdata;
+    wire [15:0] out;
 
-    mem memory(clk,pc[15:1],ins,mem_raddr1[15:1],mem_load,mem_wen,mem_waddr[15:1],mem_wdata[15:0]);
+    mem memory(clk,pc[15:1],ins,mem_raddr1[15:1],mem_load,mem_wen,mem_waddr[15:1],mem_wdata[15:0], mem_wen, mem_wen, pc, mem_wen, out[15:0]);
 
-
+    
     wire [3:0]reg_raddr0;
     wire[15:0]ra_init;
     wire [3:0]reg_raddr1;
