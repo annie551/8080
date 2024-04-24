@@ -170,11 +170,10 @@ module main();
     assign reg_raddr0 = (d_reg_rp == 2'b00) ? 3'b000 : 3'b010; // B or D
     assign reg_raddr1 = (d_reg_rp == 2'b00) ? 3'b001 : 3'b011; // C or E
     assign reg_raddr2 = 3'b100; // H
-
     assign reg_raddr3 = 3'b101; // L 
     assign reg_raddr4 = 3'b111; // A
     assign reg_raddr5 = (d_control[18] || d_control[19]) ? d_reg_dest_cond_restart : 
-                        d_reg_src; // H or destination or src
+                        d_reg_src; // destination or src
 
 
     // feeding wires into execute 1 stage
@@ -197,6 +196,8 @@ module main();
     reg [7:0] x2_rp2_val;
     reg [7:0] x2_regH_val;
     reg [7:0] x2_regL_val;
+    wire [7:0] x2_accumulator_val;
+    wire [7:0] x2_source_destination_val;
     reg [23:0] x2_instruction;
 
     // EXECUTE 2
@@ -206,6 +207,8 @@ module main();
     reg [7:0] wb_rp2_val;
     reg [7:0] wb_regH_val;
     reg [7:0] wb_regL_val;
+    wire [7:0] wb_accumulator_val;
+    wire [7:0] wb_source_destination_val;
     reg [23:0] wb_instruction;
 
     // instructions that change flags
@@ -283,7 +286,7 @@ module main();
     assign mem_wen0 = wb_control[4] || wb_control[6] || wb_control[8];
     assign mem_wen1 = wb_control[6];
     assign mem_waddr = ( wb_control[4] || wb_control[6]) ? {wb_instruction[7:0], wb_instruction[15:8]} : {wb_rp1_val, wb_rp2_val};
-    assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_regL_val : wb_regH_val;
+    assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_ac : wb_regH_val;
     assign mem_wdata1 = wb_regL_val;
 
     // condition
@@ -318,6 +321,8 @@ module main();
         x2_rp2_val <= x1_rp2_val;
         x2_regH_val <= x1_regH_val;
         x2_regL_val <= x1_regL_val;
+        x2_accumulator_val <= x1_accumulator_val;
+        x2_source_destination_val <= x1_source_destination_val;
         x2_instruction <= x1_instruction;
 
         // feeding wires from execute 2 to writeback
@@ -326,6 +331,8 @@ module main();
         wb_rp2_val <= x2_rp2_val;
         wb_regH_val <= x2_regH_val;
         wb_regL_val <= x2_regL_val;
+        wb_accumulator_val <= x2_accumulator_val;
+        wb_source_destination_val <= x2_source_destination_val;
         wb_instruction <= x2_instruction;
 
         // updating flags:
