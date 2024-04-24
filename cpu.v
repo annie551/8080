@@ -66,16 +66,10 @@ module main();
     reg wb_v = 1'b0;
 
     // DECODE
+    wire [23:0] d_instruction = instruction;
     wire [7:0] d_opcode = instruction[23:16];
-    // register opcodes
-    wire [2:0] regA = 3'b111;
-    wire [2:0] regB = 3'b000;
-    wire [2:0] regC = 3'b001;
-    wire [2:0] regD = 3'b010;
-    wire [2:0] regE = 3'b011;
-    wire [2:0] regH = 3'b100;
-    wire [2:0] regL = 3'b101;
-    wire [2:0] regM = 3'b110;
+    wire [7:0] d_lb = instruction[15:8];
+    wire [7:0] d_hb = instruction[7:0];
     // control wires
     wire d_mov = (d_opcode[7:6] == 2'b01);
     wire d_mvi = (d_opcode[7:6] == 2'b00) && (d_opcode[2:0] == 3'b110);
@@ -142,7 +136,7 @@ module main();
                    d_sub, d_aci, d_adc, d_adi, d_add, d_xchg, d_stax, d_ldax, d_shld, d_lhld,
                    d_sta, d_lda, d_lxi, d_mvi, d_mov};
     // registers to read
-    wire [2:0] d_reg_dest = d_opcode[5:3]; // destination register
+    wire [2:0] d_reg_dest_cond_restart = d_opcode[5:3]; // destination register
     wire [2:0] d_reg_src = d_opcode[2:0]; // source register
     wire [1:0] d_reg_rp = d_opcode[5:4]; // register pair
     // instruction size
@@ -157,18 +151,51 @@ module main();
     wire d_is_two_bytes = d_control[1] || d_control[11] || d_control[13] || d_control[15] || d_control[17] ||
                             d_control[25] || d_control[29] || d_control[51] || d_control[52];
     wire d_is_three_bytes = !(d_is_one_byte || d_is_two_bytes);
-
-    
     // choose which registers to read
     // registers: RP 1, RP 2, destination/high, low
-    wire [2:0] d_reg_pair1 = (d_reg_rp == 2'b00) ? 3'b000 : 3'b010;
-    wire [2:0] d_reg_pair2 = (d_reg_rp == 2'b00) ? 3'b001 : 3'b011;
+    assign reg_raddr0 = (d_reg_rp == 2'b00) ? 3'b000 : 3'b010;
+    assign reg_raddr1 = (d_reg_rp == 2'b00) ? 3'b001 : 3'b011;
     wire d_uses_hl = d_control[5] || d_control[6] || d_control[9] || d_control[22] || d_control[46] ||
                         d_control[49] || d_control[50];
-    wire [2:0] d_reg_dest_high = d_uses_hl ? 3'b100 : d_reg_dest;
-    wire [2:0] d_reg_low = 3'b101;
+    assign reg_raddr2 = d_uses_hl ? 3'b100 : d_reg_src;
+    assign reg_raddr3 = d_uses_hl ? 3'b101 : 3'b111;
     // feeding wires into execute 1 stage
+    reg [56:0] x1_control = d_control;
+    reg [7:0] x1_lb = d_lb;
+    reg [7:0] x1_hb = d_hb;
+    reg [2:0] x1_reg_src = d_reg_src;
+    reg [2:0] x1_rp1 = reg_raddr0; // first half of register pair
+    reg [2:0] x1_rp2 = reg_raddr1;
+    reg [2:0] x1_regH = reg_raddr2; // could also be destination, condition, or restart immediate
+    reg [2:0] x1_regL = reg_raddr3;
+    reg [2:0] x1_reg_dest_cond_restart = d_reg_dest_cond_restart;
+    reg [23:0] x1_instruction = d_instruction;
 
+    // EXECUTE 1
+    // loading things into memory
+    assign mem_raddr = x1_control[7] ? {r_data0, r_data1} : {hb, lb}; // TODO: forward later
+    reg [56:0] x2_control = x1_control;
+    reg [7:0] x2_lb = x1_lb;
+    reg [7:0] x2_hb = x1_hb;
+    reg [2:0] x2_reg_src = x1_reg_src;
+    reg [2:0] x2_rp1 = x1_rp1; // first half of register pair
+    reg [2:0] x2_rp2 = x1_rp2;
+    reg [2:0] x2_regH = x1_regH; // could also be destination, condition, or restart immediate
+    reg [2:0] x2_regL = x1_regL;
+    reg [2:0] x2_reg_dest_cond_restart = x1_reg_dest_cond_restart;
+    reg [23:0] x2_instruction = x1_instruction;
+
+    // EXECUTE 2
+    reg [56:0] wb_control = x2_control;
+    reg [7:0] wb_lb = x2_lb;
+    reg [7:0] wb_hb = x2_hb;
+    reg [2:0] wb_reg_src = x2_reg_src;
+    reg [2:0] wb_rp1 = x2_rp1; // first half of register pair
+    reg [2:0] wb_rp2 = x2_rp2;
+    reg [2:0] wb_regH = x2_regH; // could also be destination, condition, or restart immediate
+    reg [2:0] wb_regL = x2_regL;
+    reg [2:0] wb_reg_dest_cond_restart = x2_reg_dest_cond_restart;
+    reg [23:0] wb_instruction = x2_instruction;
 
 
 
@@ -177,12 +204,65 @@ module main();
         //     halt<=1;
         // end
 
+        // feeding wires from decode to execute 1
+        x1_control <= d_control;
+        x1_lb <= d_lb;
+        x1_hb <= d_hb;
+        x1_reg_src <= d_reg_src;
+        x1_rp1 <= reg_raddr0;
+        x1_rp2 <= reg_raddr1; 
+        x1_regH <= reg_raddr2;
+        x1_regL <= reg_raddr3;
+        x1_reg_dest_cond_restart <= d_reg_dest_cond_restart;
+        x1_instruction <= d_instruction;
+
+        // feeding wires from execute 1 to execute 2
+        x2_control <= x1_control;
+        x2_lb <= x1_lb;
+        x2_hb <= x1_hb;
+        x2_reg_src <= x1_reg_src;
+        x2_rp1 <= x1_rp1;
+        x2_rp2 <= x1_rp2;
+        x2_regH <= x1_regH;
+        x2_regL <= x1_regL;
+        x2_reg_dest_cond_restart <= x1_reg_dest_cond_restart;
+        x2_instruction <= x1_instruction;
+
+        // feeding wires from execute 2 to writeback
+        wb_control <= x2_control;
+        wb_lb <= x2_lb;
+        wb_hb <= x2_hb;
+        wb_reg_src <= x2_reg_src;
+        wb_rp1 <= x2_rp1;
+        wb_rp2 <= x2_rp2;
+        wb_regH <= x2_regH;
+        wb_regL <= x2_regL;
+        wb_reg_dest_cond_restart <= x2_reg_dest_cond_restart;
+        wb_instruction <= x2_instruction;
+
         // shift registers
-        f2_v <= f1_v;
-        d_v <= f2_v;
-        x1_v <= d_v;
-        x2_v <= x1_v;
-        wb_v <= x2_v;
+        if(d_is_two_bytes && d_v) begin
+            f2_v <= f1_v;
+            d_v<=0;
+            x1_v <= d_v;
+            x2_v <= x1_v;
+            wb_v <= x2_v;
+        end
+        if(d_is_three_bytes && d_v) begin
+            f2_v <= 0;
+            d_v<=0;
+            x1_v <= d_v;
+            x2_v <= x1_v;
+            wb_v <= x2_v;
+        end
+        else begin
+            f2_v <= f1_v;
+            d_v <= f2_v;
+            x1_v <= d_v;
+            x2_v <= x1_v;
+            wb_v <= x2_v;
+        end
+
 
         // check if its one or two or three bytes and adjust pc and shift registers
 
