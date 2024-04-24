@@ -225,10 +225,12 @@ module main();
                             wb_control[30] || wb_control[31] || wb_control[32] || wb_control[33] ||
                             wb_control[34] || wb_control[35]) && wb_v;
 
-    assign push = ((x2_control[47] && x2_v) && !jump) || subroutine;
-    assign pop = (wb_control[48] && x2_v && !subroutine && !jump) || return;
-    assign swap = wb_control[49] && x2_v && !subroutine && !jump;
-    assign replace_SP = wb_control[50] && x2_v && !subroutine && !jump;
+    wire flushed = jump || return || subroutine || just_returned;
+
+    assign push = ((x2_control[47] && x2_v) && !flushed) || subroutine;
+    assign pop = (wb_control[48] && x2_v && !flushed) || return;
+    assign swap = wb_control[49] && x2_v && !flushed;
+    assign replace_SP = wb_control[50] && x2_v && !flushed;
 
     assign stack_data = (subroutine) ? wb_pc+2 :
                         (push) ? {x2_rp1_val, x2_rp2_val} : {x2_regH_val, x2_regL_val};
