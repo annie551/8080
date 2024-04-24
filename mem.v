@@ -4,7 +4,7 @@ module mem(input clk,
     input [15:0]raddr0_, output [15:0]rdata0_,
     input [15:0]raddr1_, output [15:0]rdata1_,
     input wen, input [15:1]waddr, input [15:0]wdata,
-    input pop, input push, input[15:0] pushorswap_data, input swap,
+    input pop, input push, input[15:0] input_data, input swap, input replace_SP
     output out);
 
     wire out;
@@ -41,8 +41,8 @@ module mem(input clk,
 
         if(push) begin
             stack_top<=stack_top-2;
-            data[stack_top]<=pushorswap_data[7:0];
-            data[stack_top-1]<=pushorswap_data[15:8];
+            data[stack_top]<=input_data[7:0];
+            data[stack_top-1]<=input_data[15:8];
         end
 
         if(pop) begin
@@ -51,8 +51,8 @@ module mem(input clk,
         end
 
         if(swap) begin
-            data[stack_top+2]<=pushorswap_data[7:0];
-            data[stack_top+1]<=pushorswap_data[15:8];
+            data[stack_top+2]<=input_data[7:0];
+            data[stack_top+1]<=input_data[15:8];
             data_out<={data[stack_top+1],data[stack_top+2]};
         end
 
@@ -62,6 +62,10 @@ module mem(input clk,
 
         if(push && stack_top<16'hbfff) begin
             $write("stack space exceeded");
+        end
+
+        if(replace_SP) begin
+            stack_top<=input_data;
         end
 
 
