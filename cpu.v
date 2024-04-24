@@ -223,7 +223,7 @@ module main();
                             wb_control[22] || wb_control[23] || wb_control[24] || wb_control[25] || 
                             wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || 
                             wb_control[30] || wb_control[31] || wb_control[32] || wb_control[33] ||
-                            wb_control[34] || wb_control[35] || wb_control[37] || wb_control[39]) && wb_v;
+                            wb_control[34] || wb_control[35]) && wb_v;
 
     assign push = ((x2_control[47] && x2_v) && !jump) || subroutine;
     assign pop = (wb_control[48] && x2_v && !subroutine && !jump) || return;
@@ -259,7 +259,7 @@ module main();
                             wb_control[33] && wb_v ? (wb_regH_val / 2) + wb_regH_val[0] * 128 : // RRC: rotate A right
                             wb_control[34] && wb_v ? (wb_regH_val * 2) + flags[0] : // RAL: rotate A left through carry
                             wb_control[35] && wb_v ? (wb_regH_val / 2) + flags[0] * 128 + wb_regH_val[0] * 256 : // RAR: rotate A right through carry
-                            wb_control[36] && wb_v ? ~wb_regH_val : 
+                            wb_control[36] && wb_v ? ~wb_regH_val : // CMA: compliment A
                             9'b0;
     // editing any register
     wire wb_edits_regs = wb_control[0] || wb_control[1] || wb_control[18] || wb_control[19];
@@ -301,6 +301,12 @@ module main();
     //returning
     wire return = (wb_control[43] || (wb_control[44] && condition_is_true)) && wb_v;
     reg just_returned;
+
+    // actual value to be written back to register or memory
+    wire [8:0] wb_val = wb_edits_A ? wb_A_val :
+                        wb_edits_regs ? wb_regs_val :
+                        wb_edits_hl ? wb_hl_val :
+                        wb_edits_rp ? wb_rp_val;
   
     // CARRY FLAGS
     reg [7:0] flags; // sign, zero, 0, auxillary carry, 0, parity, 1, carry
@@ -339,6 +345,19 @@ module main();
         // CMC: compliment carry flag
         if (wb_control[37]) begin
             flags[0] <= ~flags[0];
+        end
+        else if (wb_control[38]) begin
+            flags[0] <= 1;
+        end
+        else begin
+            if (wb_edits_flags) begin
+                flags[5] <= wb_val == 0; // setting ZERO flag
+                flags[6] <= wb_val[7] == 1; // setting SIGN flag
+                flags[2] <= (wb_val[0] + wb_val[1] + wb_val[2] + wb_val[3] + wb_val[4] + wb_val[5] + wb_val[6] + wb_val[7] + 1) % 2; // check PARITY flag
+            end
+            if (wb_edits_carry) begin
+                flags[0] <= wb_val[9]; // setting CARRY flag
+            end
         end
 
         just_returned<=return;
