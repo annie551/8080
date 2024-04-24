@@ -44,7 +44,10 @@ module main();
     wire[7:0]r_data2;
     wire [2:0]reg_raddr3;
     wire[7:0]r_data3;
-    wire reg_wen;
+    wire reg_wen0;
+    wire reg_wen1;
+    wire reg_wen2;
+    wire reg_wen3;
     wire [2:0]reg_waddr0;
     wire [7:0]reg_wdata0;
     wire [2:0]reg_waddr1;
@@ -54,7 +57,7 @@ module main();
     wire [2:0]reg_waddr3;
     wire [7:0]reg_wdata3;
     // registers
-    regs registers(clk,reg_raddr0,r_data0,reg_raddr1,r_data1,reg_raddr2,r_data2,reg_raddr3,r_data3,reg_wen,reg_waddr0,reg_wdata0,reg_waddr1,reg_wdata1,reg_waddr2,reg_wdata2,reg_waddr3,reg_wdata3);
+    regs registers(clk,reg_raddr0,r_data0,reg_raddr1,r_data1,reg_raddr2,r_data2,reg_raddr3,r_data3,reg_wen0,reg_wen1,reg_wen2,reg_wen3,reg_waddr0,reg_wdata0,reg_waddr1,reg_wdata1,reg_waddr2,reg_wdata2,reg_waddr3,reg_wdata3);
 
 
     // shift registers
