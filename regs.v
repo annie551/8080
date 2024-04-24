@@ -5,7 +5,7 @@ module regs(input clk,
     input [2:0]raddr1_, output [7:0]rdata1,
     input [2:0]raddr2_, output [7:0]rdata2,
     input [2:0]raddr3_, output [7:0]rdata3,
-    input wen, 
+    input wen0, input wen1, input wen2, input wen3, 
     input [2:0]waddr0, input [7:0]wdata0,
     input [2:0] waddr1, input [7:0] wdata1,
     input [2:0]waddr2, input [7:0]wdata2,
@@ -28,11 +28,17 @@ module regs(input clk,
         raddr1 <= raddr1_;
         raddr2 <= raddr2_;
         raddr3 <= raddr3_;
-        if (wen) begin
+        if (wen0) begin
             data[waddr0] <= wdata0;
-            data[waddr1]<=wdata1;
+        end
+        if (wen1) begin
+            data[waddr1] <= wdata1;
+        end
+        if (wen2) begin
             data[waddr2] <= wdata2;
-            data[waddr3]<=wdata3;
+        end
+        if (wen3) begin
+            data[waddr3] <= wdata3;
         end
     end
 

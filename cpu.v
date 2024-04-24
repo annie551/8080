@@ -24,9 +24,12 @@ module main();
     wire [15:0] out;
     wire [15:0]mem_raddr;
     wire[15:0] mem_loaded_data;
-    wire mem_wen;
-    wire [15:0]mem_waddr;
-    wire [15:0]mem_wdata;
+    wire mem_wen0;
+    wire [15:0]mem_waddr0;
+    wire [7:0]mem_wdata0;
+    wire mem_wen1;
+    wire [15:0]mem_waddr1;
+    wire [7:0]mem_wdata1;
     wire pop;
     wire push;
     wire [15:0] stack_data;
@@ -34,7 +37,7 @@ module main();
     wire replace_SP;
 
 
-    mem memory(clk,pc,instruction,mem_raddr,mem_loaded_data,mem_wen,mem_waddr,mem_wdata, pop, push, stack_data, swap, replace_SP, out);
+    mem memory(clk,pc,instruction,mem_raddr,mem_loaded_data,mem_wen0,mem_waddr0,mem_wdata0, mem_wen1,mem_waddr1,mem_wdata1,pop, push, stack_data, swap, replace_SP, out);
 
     wire [2:0]reg_raddr0;
     wire[7:0]r_data0;
@@ -212,6 +215,13 @@ module main();
 
     assign stack_data = (push) ? {x2_rp1_val, x2_rp2_val} : {x2_regH_val, x2_regL_val};
     
+        // updated A value, updating normal register value, updating memory (store)
+    wire wb_edits_A = wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] || wb_control[14] ||
+                        wb_control[15] || wb_control[16] || wb_control[17] || wb_control[24] || wb_control[25] ||
+                        wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || wb_control[30] ||
+                        wb_control[31] || wb_control[32] || wb_control[33] || wb_control[34] || wb_control[35] ||
+                        wb_control[36];
+  
 
     always @(posedge clk) begin
         // if(NotValid)begin
