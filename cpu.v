@@ -144,6 +144,16 @@ module main();
     wire d_is_three_bytes = !(d_is_one_byte || d_is_two_bytes);
 
     
+    // choose which registers to read
+    // registers: RP 1, RP 2, destination/high, low
+    wire [2:0] d_reg_pair1 = (d_reg_rp == 2'b00) ? 3'b000 : 3'b010;
+    wire [2:0] d_reg_pair2 = (d_reg_rp == 2'b00) ? 3'b001 : 3'b011;
+    wire d_uses_hl = d_control[5] || d_control[6] || d_control[9] || d_control[22] || d_control[46] ||
+                        d_control[49] || d_control[50];
+    wire [2:0] d_reg_dest_high = d_uses_hl ? 3'b100 : d_reg_dest;
+    wire [2:0] d_reg_low = 3'b101;
+    // feeding wires into execute 1 stage
+
 
 
 
