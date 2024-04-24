@@ -25,10 +25,9 @@ module main();
     wire [15:0]mem_raddr;
     wire[15:0] mem_loaded_data;
     wire mem_wen0;
-    wire [15:0]mem_waddr0;
+    wire [15:0]mem_waddr;
     wire [7:0]mem_wdata0;
     wire mem_wen1;
-    wire [15:0]mem_waddr1;
     wire [7:0]mem_wdata1;
     wire pop;
     wire push;
@@ -37,7 +36,7 @@ module main();
     wire replace_SP;
 
 
-    mem memory(clk,pc,instruction,mem_raddr,mem_loaded_data,mem_wen0,mem_waddr0,mem_wdata0, mem_wen1,mem_waddr1,mem_wdata1,pop, push, stack_data, swap, replace_SP, out);
+    mem memory(clk,pc,instruction,mem_raddr,mem_loaded_data,mem_wen0,mem_waddr,mem_wdata0, mem_wen1,mem_wdata1,pop, push, stack_data, swap, replace_SP, out);
 
     wire [2:0]reg_raddr0;
     wire[7:0]r_data0;
@@ -221,7 +220,15 @@ module main();
                         wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || wb_control[30] ||
                         wb_control[31] || wb_control[32] || wb_control[33] || wb_control[34] || wb_control[35] ||
                         wb_control[36];
-  
+    
+    assign mem_wen0 = wb_control[4] || wb_control[6] || wb_control[8];
+    assign mem_wen1 = wb_control[6];
+
+    assign mem_waddr0 = ( wb_control[4] || wb_control[6]) ? {wb_instruction[7:0], wb_instruction[15:8]} : {wb_rp1_val, wb_rp2_val};
+
+    assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_regL_val : wb_regH_val;
+    assign mem_wdata1 = wb_regL_val;
+
 
     always @(posedge clk) begin
         // if(NotValid)begin
