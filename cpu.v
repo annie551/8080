@@ -5,7 +5,7 @@ module main();
     initial begin
         $dumpfile("cpu.vcd");
         $dumpvars(0,main);
-        
+
     end
 
     // clock
@@ -20,27 +20,42 @@ module main();
 
 
     // read from memory
-    wire[15:0] ins;
-    wire [15:0] instruction;
-    wire [15:0]mem_raddr1;
-    wire[15:0] mem_load;
+    wire[23:0] instruction;
+    wire [15:0] out;
+    wire [15:0]mem_raddr;
+    wire[15:0] mem_loaded_data;
     wire mem_wen;
     wire [15:0]mem_waddr;
     wire [15:0]mem_wdata;
-    wire [15:0] out;
+    wire pop;
+    wire push;
+    wire [15:0] stack_data;
+    wire swap;
+    wire replace_SP;
 
-    mem memory(clk,pc[15:1],ins,mem_raddr1[15:1],mem_load,mem_wen,mem_waddr[15:1],mem_wdata[15:0], mem_wen, mem_wen, pc, mem_wen, out[15:0]);
 
-    
-    wire [3:0]reg_raddr0;
-    wire[15:0]ra_init;
-    wire [3:0]reg_raddr1;
-    wire[15:0]rt_init;
+    mem memory(clk,pc,instruction,mem_raddr,mem_loaded_data,mem_wen,mem_waddr,mem_wdata, pop, push, stack_data, swap, replace_SP, out);
+
+    wire [2:0]reg_raddr0;
+    wire[7:0]r_data0;
+    wire [2:0]reg_raddr1;
+    wire[7:0]r_data1;
+    wire [2:0]reg_raddr2;
+    wire[7:0]r_data2;
+    wire [2:0]reg_raddr3;
+    wire[7:0]r_data3;
     wire reg_wen;
-    wire [3:0]reg_waddr;
-    wire [15:0]reg_wdata;
+    wire [2:0]reg_waddr0;
+    wire [7:0]reg_wdata0;
+    wire [2:0]reg_waddr1;
+    wire [7:0]reg_wdata1;
+    wire [2:0]reg_waddr2;
+    wire [7:0]reg_wdata2;
+    wire [2:0]reg_waddr3;
+    wire [7:0]reg_wdata3;
     // registers
-    regs registers(clk,reg_raddr0[3:0],ra_init[15:0],reg_raddr1[3:0],rt_init[15:0],reg_wen,reg_waddr[3:0],reg_wdata[15:0]);
+    regs registers(clk,reg_raddr0,r_data0,reg_raddr1,r_data1,reg_raddr2,r_data2,reg_raddr3,r_data3,reg_wen,reg_waddr0,reg_wdata0,reg_waddr1,reg_wdata1,reg_waddr2,reg_wdata2,reg_waddr3,reg_wdata3);
+
 
     // shift registers
     reg f1_v = 1'b1;
@@ -51,7 +66,7 @@ module main();
     reg wb_v = 1'b0;
 
     // DECODE
-    wire [7:0] d_opcode = ins[23:16];
+    wire [7:0] d_opcode = instruction[23:16];
     // register opcodes
     wire [2:0] regA = 3'b111;
     wire [2:0] regB = 3'b000;
