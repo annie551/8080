@@ -286,7 +286,7 @@ module main();
     assign mem_wen0 = wb_control[4] || wb_control[6] || wb_control[8];
     assign mem_wen1 = wb_control[6];
     assign mem_waddr = ( wb_control[4] || wb_control[6]) ? {wb_instruction[7:0], wb_instruction[15:8]} : {wb_rp1_val, wb_rp2_val};
-    assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_ac : wb_regH_val;
+    assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_accumulator_val : wb_regH_val;
     assign mem_wdata1 = wb_regL_val;
 
     // condition
@@ -294,8 +294,10 @@ module main();
     wire condition_is_true = (condition == 0 && !flags[6]) || (condition == 1 && flags[6]) || (condition == 2 && !flags[0]) || (condition == 3 && flags[0]) || (condition == 4 && !flags[2]) || (condition == 5 && flags[2]) || (condition == 6 && !flags[7]) || (condition == 7 && flags[7]);
 
     // jumping
-    wire [15:0] jump_location = (wb_control[45]) ? wb_instruction[21:19]*8 :{wb_instruction[7:0], wb_instruction[15:8]};
-    wire jump = (wb_control[39] || wb_control[41] ||(wb_control[40] && condition_is_true) ||(wb_control[42] && condition_is_true)) && wb_v;
+    wire [15:0] jump_location = (wb_control[45]) ? wb_instruction[21:19]*8 :
+                                (wb_control[46]) ? : {wb_regH_val, wb_regL_val} :
+                                {wb_instruction[7:0], wb_instruction[15:8]};
+    wire jump = (wb_control[39] || wb_control[46] ||(wb_control[40] && condition_is_true)) && wb_v;
     wire subroutine = (wb_control[41] || wb_control[45] ||(wb_control[42] && condition_is_true)) && wb_v;
 
     //returning
