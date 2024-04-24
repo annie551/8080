@@ -56,6 +56,15 @@ module mem(input clk,
             data_out<={data[stack_top+1],data[stack_top+2]};
         end
 
+        if(wen && waddr>16'hbfff) begin
+            $write("out of range of memory allocation");
+        end
+
+        if(push && stack_top<16'hbfff) begin
+            $write("stack space exceeded");
+        end
+
+
     end
 
 endmodule
