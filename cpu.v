@@ -160,42 +160,42 @@ module main();
     assign reg_raddr2 = d_uses_hl ? 3'b100 : d_reg_src;
     assign reg_raddr3 = d_uses_hl ? 3'b101 : 3'b111;
     // feeding wires into execute 1 stage
-    reg [56:0] x1_control = d_control;
-    reg [7:0] x1_lb = d_lb;
-    reg [7:0] x1_hb = d_hb;
-    reg [2:0] x1_reg_src = d_reg_src;
-    reg [2:0] x1_rp1 = reg_raddr0; // first half of register pair
-    reg [2:0] x1_rp2 = reg_raddr1;
-    reg [2:0] x1_regH = reg_raddr2; // could also be destination, condition, or restart immediate
-    reg [2:0] x1_regL = reg_raddr3;
-    reg [2:0] x1_reg_dest_cond_restart = d_reg_dest_cond_restart;
-    reg [23:0] x1_instruction = d_instruction;
+    reg [56:0] x1_control;
+    reg [7:0] x1_lb;
+    reg [7:0] x1_hb;
+    reg [2:0] x1_reg_src;
+    reg [2:0] x1_rp1; // first half of register pair
+    reg [2:0] x1_rp2;
+    reg [2:0] x1_regH; // could also be destination, condition, or restart immediate
+    reg [2:0] x1_regL;
+    reg [2:0] x1_reg_dest_cond_restart;
+    reg [23:0] x1_instruction;
 
     // EXECUTE 1
     // loading things into memory
-    assign mem_raddr = x1_control[7] ? {r_data0, r_data1} : {hb, lb}; // TODO: forward later
-    reg [56:0] x2_control = x1_control;
-    reg [7:0] x2_lb = x1_lb;
-    reg [7:0] x2_hb = x1_hb;
-    reg [2:0] x2_reg_src = x1_reg_src;
-    reg [2:0] x2_rp1 = x1_rp1; // first half of register pair
-    reg [2:0] x2_rp2 = x1_rp2;
-    reg [2:0] x2_regH = x1_regH; // could also be destination, condition, or restart immediate
-    reg [2:0] x2_regL = x1_regL;
-    reg [2:0] x2_reg_dest_cond_restart = x1_reg_dest_cond_restart;
-    reg [23:0] x2_instruction = x1_instruction;
+    assign mem_raddr = x1_control[7] ? {r_data0, r_data1} : {d_hb, d_lb}; // TODO: forward later
+    reg [56:0] x2_control;
+    reg [7:0] x2_lb;
+    reg [7:0] x2_hb;
+    reg [2:0] x2_reg_src;
+    reg [2:0] x2_rp1; // first half of register pair
+    reg [2:0] x2_rp2;
+    reg [2:0] x2_regH; // could also be destination, condition, or restart immediate
+    reg [2:0] x2_regL;
+    reg [2:0] x2_reg_dest_cond_restart;
+    reg [23:0] x2_instruction;
 
     // EXECUTE 2
-    reg [56:0] wb_control = x2_control;
-    reg [7:0] wb_lb = x2_lb;
-    reg [7:0] wb_hb = x2_hb;
-    reg [2:0] wb_reg_src = x2_reg_src;
-    reg [2:0] wb_rp1 = x2_rp1; // first half of register pair
-    reg [2:0] wb_rp2 = x2_rp2;
-    reg [2:0] wb_regH = x2_regH; // could also be destination, condition, or restart immediate
-    reg [2:0] wb_regL = x2_regL;
-    reg [2:0] wb_reg_dest_cond_restart = x2_reg_dest_cond_restart;
-    reg [23:0] wb_instruction = x2_instruction;
+    reg [56:0] wb_control;
+    reg [7:0] wb_lb;
+    reg [7:0] wb_hb;
+    reg [2:0] wb_reg_src;
+    reg [2:0] wb_rp1; // first half of register pair
+    reg [2:0] wb_rp2;
+    reg [2:0] wb_regH; // could also be destination, condition, or restart immediate
+    reg [2:0] wb_regL;
+    reg [2:0] wb_reg_dest_cond_restart;
+    reg [23:0] wb_instruction;
 
 
 
