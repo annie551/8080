@@ -15,6 +15,11 @@ module main();
     reg halt = 0;
 
     reg[15:0] pc=0;
+    reg [15:0]f2_pc;
+    reg [15:0]d_pc;
+    reg [15:0]x1_pc;
+    reg [15:0]x2_pc;
+    reg [15:0]wb_pc;
 
     counter ctr(halt,clk);
 
@@ -209,12 +214,13 @@ module main();
                             wb_control[30] || wb_control[31] || wb_control[32] || wb_control[33] ||
                             wb_control[34] || wb_control[35] || wb_control[37] || wb_control[39]) && wb_v;
 
-    assign push = x2_control[47] && x2_v;
-    assign pop = wb_control[48] && x2_v;
-    assign swap = wb_control[49] && x2_v;
-    assign replace_SP = wb_control[50] && x2_v;
+    assign push = ((x2_control[47] && x2_v) || subroutine) && !jump;
+    assign pop = wb_control[48] && x2_v && !subroutine && !jump;
+    assign swap = wb_control[49] && x2_v && !subroutine && !jump;
+    assign replace_SP = wb_control[50] && x2_v && !subroutine && !jump;
 
-    assign stack_data = (push) ? {x2_rp1_val, x2_rp2_val} : {x2_regH_val, x2_regL_val};
+    assign stack_data = (subroutine) ? wb_pc+2 :
+                        (push) ? {x2_rp1_val, x2_rp2_val} : {x2_regH_val, x2_regL_val};
     
     // updated A value, updating normal register value, updating memory (store)
     // editing A register
@@ -349,10 +355,14 @@ module main();
             end
         end
 
+        f2_pc<=pc;
+        d_pc<=f2_pc;
+        x1_pc<=d_pc;
+        x2_pc<=x1_pc;
+        wb_pc<=x2_pc;
 
         // check if its one or two or three bytes and adjust pc and shift registers
 
-        pc<=pc+2;
         halt<=1;
 
         // if(print && halt==0) begin
