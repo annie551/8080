@@ -220,15 +220,6 @@ module main();
                         wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || wb_control[30] ||
                         wb_control[31] || wb_control[32] || wb_control[33] || wb_control[34] || wb_control[35] ||
                         wb_control[36];
-    
-    assign mem_wen0 = wb_control[4] || wb_control[6] || wb_control[8];
-    assign mem_wen1 = wb_control[6];
-
-    assign mem_waddr0 = ( wb_control[4] || wb_control[6]) ? {wb_instruction[7:0], wb_instruction[15:8]} : {wb_rp1_val, wb_rp2_val};
-
-    assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_regL_val : wb_regH_val;
-    assign mem_wdata1 = wb_regL_val;
-
     wire [8:0] wb_A_val = (wb_control[10] || wb_control[30]) && wb_v ? wb_regH_val + wb_regL_val : // ADD S: add register to A; CMP S: compare register with A
                             (wb_control[11] || wb_control[31]) && wb_v ? wb_regH_val + wb_instruction[15:8] : // ADI #: add immediate to A; CPI #: compare immediate with A
                             wb_control[12] && wb_v ? wb_regH_val + wb_regL_val + flags[4] : // ADC S: add register to A with carry
@@ -249,6 +240,14 @@ module main();
                             wb_control[35] && wb_v ? (wb_regH_val / 2) + flags[4] * 128 + wb_regH_val[0] * 256 : // RAR: rotate A right through carry
                             wb_control[36] && wb_v ? ~wb_regH_val : 
                             0;
+
+    assign mem_wen0 = wb_control[4] || wb_control[6] || wb_control[8];
+    assign mem_wen1 = wb_control[6];
+
+    assign mem_waddr0 = ( wb_control[4] || wb_control[6]) ? {wb_instruction[7:0], wb_instruction[15:8]} : {wb_rp1_val, wb_rp2_val};
+
+    assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_regL_val : wb_regH_val;
+    assign mem_wdata1 = wb_regL_val;
   
     // CARRY FLAGS
     reg [7:0] flags; // sign, zero, 0, auxillary carry, 0, parity, 1, carry
