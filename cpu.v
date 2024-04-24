@@ -143,6 +143,10 @@ module main();
                             d_control[25] || d_control[29] || d_control[51] || d_control[52];
     wire d_is_three_bytes = !(d_is_one_byte || d_is_two_bytes);
 
+    
+
+
+
     always @(posedge clk) begin
         // if(NotValid)begin
         //     halt<=1;
