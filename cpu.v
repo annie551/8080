@@ -367,7 +367,7 @@ module main();
         just_returned<=return;
 
         // shift registers
-        if (jump || subroutine || return || just_returned) begin
+        if (flushed) begin
             if (return) begin
                 f1_v<=0;
             end
