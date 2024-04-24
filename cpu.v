@@ -42,8 +42,25 @@ module main();
     // registers
     regs registers(clk,reg_raddr0[3:0],ra_init[15:0],reg_raddr1[3:0],rt_init[15:0],reg_wen,reg_waddr[3:0],reg_wdata[15:0]);
 
+    // shift registers
+    reg f1_v = 1'b1;
+    reg f2_v = 1'b1;
+    reg d_v = 1'b0;
+    reg x1_v = 1'b0;
+    reg x2_v = 1'b0;
+    reg wb_v = 1'b0;
+
     // DECODE
     wire [7:0] d_opcode = ins[23:16];
+    // register opcodes
+    wire [2:0] regA = 3'b111;
+    wire [2:0] regB = 3'b000;
+    wire [2:0] regC = 3'b001;
+    wire [2:0] regD = 3'b010;
+    wire [2:0] regE = 3'b011;
+    wire [2:0] regH = 3'b100;
+    wire [2:0] regL = 3'b101;
+    wire [2:0] regM = 3'b110;
     // control wires
     wire d_mov = (d_opcode[7:6] == 2'b01);
     wire d_mvi = (d_opcode[7:6] == 2'b00) && (d_opcode[2:0] == 3'b110);
@@ -69,13 +86,13 @@ module main();
     wire d_dcx = (d_opcode[7:6] == 2'b00) && (d_opcode[3:0] == 4'b1011);
     wire d_dad = (d_opcode[7:6] == 2'b00) && (d_opcode[3:0] == 4'b1001);
     wire d_daa = (d_opcode == 8'b00100111);
-    wire d_ana = (d_opcode[7:5] == 3'b10100);
+    wire d_ana = (d_opcode[7:3] == 5'b10100);
     wire d_ani = (d_opcode == 8'b11100110);
-    wire d_ora = (d_opcode[7:3] == 3'b10110);
+    wire d_ora = (d_opcode[7:3] == 5'b10110);
     wire d_ori = (d_opcode == 8'b11110110);
     wire d_xra = (d_opcode[7:3] == 5'b10101);
     wire d_xri = (d_opcode == 8'b11101110);
-    wire d_cmp = (d_opcode[7:3] == 3'b10111);
+    wire d_cmp = (d_opcode[7:3] == 5'b10111);
     wire d_cpi = (d_opcode == 8'b11111110);
     wire d_rlc = (d_opcode == 8'b00000111);
     wire d_rrc = (d_opcode == 8'b00001111);
@@ -102,11 +119,44 @@ module main();
     wire d_di = (d_opcode == 8'b11110011);
     wire d_hlt = (d_opcode == 8'b01110110);
     wire d_nop = (d_opcode == 8'b00000000);
+    // final control wire
+    wire [56:0] d_control = {d_nop, d_hlt, d_di, d_ei, d_out_p, d_in_p, d_sphl, d_xthl, d_pop, d_push,
+                   d_pchl, d_rst, d_rccc, d_ret, d_cccc, d_call, d_jccc, d_jmp, d_stc, d_cmc,
+                   d_cma, d_rar, d_ral, d_rrc, d_rlc, d_cpi, d_cmp, d_xri, d_xra, d_ori, d_ora,
+                   d_ani, d_ana, d_daa, d_dad, d_dcx, d_inx, d_dcr, d_inr, d_sbi, d_sbb, d_sui,
+                   d_sub, d_aci, d_adc, d_adi, d_add, d_xchg, d_stax, d_ldax, d_shld, d_lhld,
+                   d_sta, d_lda, d_lxi, d_mvi, d_mov};
+    // registers to read
+    wire [2:0] d_reg_dest = d_opcode[5:3]; // destination register
+    wire [2:0] d_reg_src = d_opcode[2:0]; // source register
+    wire [1:0] d_reg_rp = d_opcode[5:4]; // register pair
+    // instruction size
+    wire d_is_one_byte = d_control[0] || d_control[7] || d_control[8] || d_control[9] || d_control[10] ||
+                            d_control[12] || d_control[14] || d_control[16] || d_control[18] || d_control[19] ||
+                            d_control[20] || d_control[21] || d_control[22] || d_control[23] || d_control[24] ||
+                            d_control[26] || d_control[27] || d_control[28] || d_control[30] || d_control[31] ||
+                            d_control[32] || d_control[33] || d_control[34] || d_control[35] || d_control[36] ||
+                            d_control[37] || d_control[38] || d_control[43] || d_control[44] || d_control[45] ||
+                            d_control[46] || d_control[47] || d_control[48] || d_control[49] || d_control[50] ||
+                            d_control[53] || d_control[54] || d_control[55] || d_control[56];
+    wire d_is_two_bytes = d_control[1] || d_control[11] || d_control[13] || d_control[15] || d_control[17] ||
+                            d_control[25] || d_control[29] || d_control[51] || d_control[52];
+    wire d_is_three_bytes = !(d_is_one_byte || d_is_two_bytes);
 
     always @(posedge clk) begin
         // if(NotValid)begin
         //     halt<=1;
         // end
+
+        // shift registers
+        f2_v <= f1_v;
+        d_v <= f2_v;
+        x1_v <= d_v;
+        x2_v <= x1_v;
+        wb_v <= x2_v;
+
+        // check if its one or two or three bytes and adjust pc and shift registers
+
         pc<=pc+2;
         halt<=1;
 
