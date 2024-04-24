@@ -228,12 +228,13 @@ module main();
     
     // updated A value, updating normal register value, updating memory (store)
     // editing A register
-    wire wb_edits_A = wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] || wb_control[14] ||
-                        wb_control[15] || wb_control[16] || wb_control[17] || wb_control[24] || wb_control[25] ||
-                        wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || wb_control[30] ||
-                        wb_control[31] || wb_control[32] || wb_control[33] || wb_control[34] || wb_control[35] ||
-                        wb_control[36];
-    wire [8:0] wb_A_val = (wb_control[10] || wb_control[30]) && wb_v ? wb_regH_val + wb_regL_val : // ADD S: add register to A; CMP S: compare register with A
+    wire wb_edits_A = wb_control[3] || wb_control[7] || wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] || 
+                        wb_control[14] || wb_control[15] || wb_control[16] || wb_control[17] || wb_control[24] || 
+                        wb_control[25] || wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || 
+                        wb_control[30] || wb_control[31] || wb_control[32] || wb_control[33] || wb_control[34] || 
+                        wb_control[35] || wb_control[36];
+    wire [8:0] wb_A_val = (wb_control[3] || wb_control[7]) && wb_v ? mem_loaded_data[15:8] : // LDA a: load A from memory
+                            (wb_control[10] || wb_control[30]) && wb_v ? wb_regH_val + wb_regL_val : // ADD S: add register to A; CMP S: compare register with A
                             (wb_control[11] || wb_control[31]) && wb_v ? wb_regH_val + wb_instruction[15:8] : // ADI #: add immediate to A; CPI #: compare immediate with A
                             wb_control[12] && wb_v ? wb_regH_val + wb_regL_val + flags[0] : // ADC S: add register to A with carry
                             wb_control[13] && wb_v ? wb_regH_val + wb_instruction[15:8] + flags[0] : // ACI #: add immediate to A with carry
@@ -261,14 +262,16 @@ module main();
                                 wb_control[19] ? wb_regH_val - 1 : // DCR D: decrement register
                                 8'b0;
     // editing any register pair
-    wire wb_edits_rp = wb_control[9] || wb_control[20] || wb_control[21];
-    wire [15:0] wb_rp_val = wb_control[9] ? {wb_regH_val, wb_regL_val} : // XCHG: exchange DE and HL content
+    wire wb_edits_rp = wb_control[2] || wb_control[9] || wb_control[20] || wb_control[21];
+    wire [15:0] wb_rp_val = wb_control[2] ? mem_loaded_data : // LXI RP, #: load register pair immediate
+                            wb_control[9] ? {wb_regH_val, wb_regL_val} : // XCHG: exchange DE and HL content
                             wb_control[20] ? {wb_rp1_val, wb_rp2_val} + 1 : // INX RP: increment register pair
                             wb_control[21] ? {wb_rp1_val, wb_rp2_val} - 1 : // DCX RP: decrement register pair
                             16'b0;
     // editing H:L registers
-    wire wb_edits_hl = wb_control[9] || wb_control[22];
-    wire [15:0] wb_hl_val = wb_control[9] ? {wb_rp1_val, wb_rp2_val} : // XCHG: exchange DE and HL content
+    wire wb_edits_hl = wb_control[5] || wb_control[9] || wb_control[22];
+    wire [15:0] wb_hl_val = wb_control[5] ? mem_loaded_data : // LHLD: load H:L from memory
+                            wb_control[9] ? {wb_rp1_val, wb_rp2_val} : // XCHG: exchange DE and HL content
                             wb_control[22] ? {wb_rp1_val, wb_rp2_val} + {wb_regH_val + wb_regL_val} : // DAD RP: add register pair to HL
                             16'b0;
 
