@@ -169,12 +169,14 @@ module main();
     // registers: RP 1, RP 2, destination/high, low
     assign reg_raddr0 = (d_reg_rp == 2'b00) ? 3'b000 : 3'b010; // B or D
     assign reg_raddr1 = (d_reg_rp == 2'b00) ? 3'b001 : 3'b011; // C or E
-    wire d_uses_hl = d_control[5] || d_control[6] || d_control[9] || d_control[22] || d_control[46] ||
-                        d_control[49] || d_control[50];
-    assign reg_raddr2 = d_uses_hl ? 3'b100 : 
-                        d_control[18] || d_control[19] ? d_reg_dest_cond_restart : 
+    assign reg_raddr2 = 3'b100; // H
+
+    assign reg_raddr3 = 3'b101; // L 
+    assign reg_raddr4 = 3'b111; // A
+    assign reg_raddr5 = (d_control[18] || d_control[19]) ? d_reg_dest_cond_restart : 
                         d_reg_src; // H or destination or src
-    assign reg_raddr3 = d_uses_hl ? 3'b101 : 3'b111; // L or A
+
+
     // feeding wires into execute 1 stage
     reg [56:0] x1_control;
     reg [23:0] x1_instruction;
@@ -183,6 +185,8 @@ module main();
     wire [7:0] x1_rp2_val = r_data1;
     wire [7:0] x1_regH_val = r_data2;
     wire [7:0] x1_regL_val = r_data3;
+    wire [7:0] x1_accumulator_val = rdata4;
+    wire [7:0] x1_source_destination_val=r_data5;
 
     // EXECUTE 1
     // loading things into memory
