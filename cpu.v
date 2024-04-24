@@ -148,13 +148,13 @@ module main();
     wire d_is_one_byte = d_control[0] || d_control[7] || d_control[8] || d_control[9] || d_control[10] ||
                             d_control[12] || d_control[14] || d_control[16] || d_control[18] || d_control[19] ||
                             d_control[20] || d_control[21] || d_control[22] || d_control[23] || d_control[24] ||
-                            d_control[26] || d_control[27] || d_control[28] || d_control[30] || d_control[31] ||
-                            d_control[32] || d_control[33] || d_control[34] || d_control[35] || d_control[36] ||
-                            d_control[37] || d_control[38] || d_control[43] || d_control[44] || d_control[45] ||
-                            d_control[46] || d_control[47] || d_control[48] || d_control[49] || d_control[50] ||
-                            d_control[53] || d_control[54] || d_control[55] || d_control[56];
+                            d_control[26] || d_control[28] || d_control[30] || d_control[31] || d_control[32] || 
+                            d_control[33] || d_control[34] || d_control[35] || d_control[36] || d_control[37] || 
+                            d_control[38] || d_control[43] || d_control[44] || d_control[45] || d_control[46] || 
+                            d_control[47] || d_control[48] || d_control[49] || d_control[50] || d_control[53] || 
+                            d_control[54] || d_control[55] || d_control[56];
     wire d_is_two_bytes = d_control[1] || d_control[11] || d_control[13] || d_control[15] || d_control[17] ||
-                            d_control[25] || d_control[29] || d_control[51] || d_control[52];
+                            d_control[25] || d_control[27] || d_control[29] || d_control[51] || d_control[52];
     wire d_is_three_bytes = !(d_is_one_byte || d_is_two_bytes);
     // choose which registers to read
     // registers: RP 1, RP 2, destination/high, low
@@ -214,7 +214,7 @@ module main();
 
     assign stack_data = (push) ? {x2_rp1_val, x2_rp2_val} : {x2_regH_val, x2_regL_val};
     
-        // updated A value, updating normal register value, updating memory (store)
+    // updated A value, updating normal register value, updating memory (store)
     wire wb_edits_A = wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] || wb_control[14] ||
                         wb_control[15] || wb_control[16] || wb_control[17] || wb_control[24] || wb_control[25] ||
                         wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || wb_control[30] ||
@@ -229,13 +229,30 @@ module main();
     assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_regL_val : wb_regH_val;
     assign mem_wdata1 = wb_regL_val;
 
-    wire [8:0] wb_A_val = wb_control[10] && wb_v ? wb_regH_val + wb_regL_val : // ADD S: add register to A
-                            wb_control[11] && wb_v ? wb_regH_val + wb_instruction[15:8] : // ADI #: add immediate to A
-                            // wb_control[12] && wb_v ? :
+    wire [8:0] wb_A_val = (wb_control[10] || wb_control[30]) && wb_v ? wb_regH_val + wb_regL_val : // ADD S: add register to A; CMP S: compare register with A
+                            (wb_control[11] || wb_control[31]) && wb_v ? wb_regH_val + wb_instruction[15:8] : // ADI #: add immediate to A; CPI #: compare immediate with A
+                            wb_control[12] && wb_v ? wb_regH_val + wb_regL_val + flags[4] : // ADC S: add register to A with carry
+                            wb_control[13] && wb_v ? wb_regH_val + wb_instruction[15:8] + flags[4] : // ACI #: add immediate to A with carry
+                            wb_control[14] && wb_v ? wb_regH_val - wb_regL_val : // SUB S: subtract register from A
+                            wb_control[15] && wb_v ? wb_regH_val - wb_instruction[15:8] : // SUI #: subtract immediate from A
+                            wb_control[16] && wb_v ? wb_regH_val - (wb_regL_val + flags[4]) : // SBB S: subtract register from A with borrow
+                            wb_control[17] && wb_v ? wb_regH_val - (wb_instruction[15:8] + flags[4]) : // SBI #: subtract immediate from A with borrow
+                            wb_control[24] && wb_v ? wb_regH_val & wb_regL_val : // ANA S: and register with A
+                            wb_control[25] && wb_v ? wb_regH_val & wb_instruction : // ANI #: and immediate with A
+                            wb_control[26] && wb_v ? wb_regH_val | wb_regL_val : // ORA S: or register with A
+                            wb_control[27] && wb_v ? wb_regH_val | wb_instruction[15:8] : // ORI #: or immediate with A
+                            wb_control[28] && wb_v ? wb_regH_val ^ wb_regL_val : // XRA S: exclusive OR register with A
+                            wb_control[29] && wb_v ? wb_regH_val ^ wb_instruction[15:8] : // XRI #: exclusive or immediate with A
+                            wb_control[32] && wb_v ? (wb_regH_val * 2)[7:0] + wb_regH_val[7] : // RLC : rotate A left
+                            wb_control[33] && wb_v ? (wb_regH_val / 2) + wb_regH_val[0] * 128 : // RRC: rotate A right
+                            wb_control[34] && wb_v ? (wb_regH_val * 2) + flags[4] : // RAL: rotate A left through carry
+                            wb_control[35] && wb_v ? (wb_regH_val / 2) + flags[4] * 128 + wb_regH_val[0] * 256 : // RAR: rotate A right through carry
+                            wb_control[36] && wb_v ? ~wb_regH_val : 
                             0;
   
     // CARRY FLAGS
     reg [7:0] flags; // sign, zero, 0, auxillary carry, 0, parity, 1, carry
+    // TODO: when setting carry flag, if addition, take top bit; if subtraction and result is 1, take the reverse of the current carry flag
 
     always @(posedge clk) begin
         // if(NotValid)begin
