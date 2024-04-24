@@ -349,10 +349,10 @@ module main();
 
         // updating flags:
         // CMC: compliment carry flag
-        if (wb_control[37]) begin
+        if (wb_control[37] && wb_v) begin
             flags[0] <= ~flags[0];
         end
-        else if (wb_control[38]) begin
+        else if (wb_control[38] && wb_v) begin
             flags[0] <= 1;
         end
         else begin
@@ -421,8 +421,6 @@ module main();
         wb_pc<=x2_pc;
 
         // check if its one or two or three bytes and adjust pc and shift registers
-
-        halt<=1;
 
         // if(print && halt==0) begin
         //     $write("%c",(reg_wdata&8'b11111111));
