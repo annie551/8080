@@ -214,8 +214,8 @@ module main();
                             wb_control[30] || wb_control[31] || wb_control[32] || wb_control[33] ||
                             wb_control[34] || wb_control[35] || wb_control[37] || wb_control[39]) && wb_v;
 
-    assign push = ((x2_control[47] && x2_v) || subroutine) && !jump;
-    assign pop = wb_control[48] && x2_v && !subroutine && !jump;
+    assign push = ((x2_control[47] && x2_v) && !jump) || subroutine;
+    assign pop = (wb_control[48] && x2_v && !subroutine && !jump) || return;
     assign swap = wb_control[49] && x2_v && !subroutine && !jump;
     assign replace_SP = wb_control[50] && x2_v && !subroutine && !jump;
 
@@ -271,7 +271,7 @@ module main();
     // storing to memory
     assign mem_wen0 = wb_control[4] || wb_control[6] || wb_control[8];
     assign mem_wen1 = wb_control[6];
-    assign mem_waddr0 = ( wb_control[4] || wb_control[6]) ? {wb_instruction[7:0], wb_instruction[15:8]} : {wb_rp1_val, wb_rp2_val};
+    assign mem_waddr = ( wb_control[4] || wb_control[6]) ? {wb_instruction[7:0], wb_instruction[15:8]} : {wb_rp1_val, wb_rp2_val};
     assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_regL_val : wb_regH_val;
     assign mem_wdata1 = wb_regL_val;
 
@@ -283,6 +283,10 @@ module main();
     wire [15:0] jump_location = (wb_control[45]) ? wb_instruction[21:19]*8 :{wb_instruction[7:0], wb_instruction[15:8]};
     wire jump = (wb_control[39] || wb_control[41] ||(wb_control[40] && condition_is_true) ||(wb_control[42] && condition_is_true)) && wb_v;
     wire subroutine = (wb_control[41] || wb_control[45] ||(wb_control[42] && condition_is_true)) && wb_v;
+
+    //returning
+    wire return = (wb_control[43] || (wb_control[44] && condition_is_true)) && wb_v;
+    reg just_returned;
   
     // CARRY FLAGS
     reg [7:0] flags; // sign, zero, 0, auxillary carry, 0, parity, 1, carry
@@ -319,9 +323,21 @@ module main();
             flags[0] <= ~flags[0];
         end
 
+        just_returned<=return;
+
         // shift registers
-        if (jump || subroutine) begin
-            pc<=jump_location;
+        if (jump || subroutine || return || just_returned) begin
+            if (return) begin
+                f1_v<=0;
+            end
+            else if (just_returned) begin
+                f1_v<=1;
+                pc<=out;
+            end
+            else begin
+                pc<=jump_location;
+
+            end
             f2_v <= 0;
             d_v<=0;
             x1_v <= 0;
