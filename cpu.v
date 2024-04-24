@@ -319,7 +319,7 @@ module main();
     // TODO: when setting carry flag, if addition, take top bit; if subtraction and result is 1, take the reverse of the current carry flag
 
     always @(posedge clk) begin
-        if(wb_control[55])begin
+        if(wb_control[55] && wb_v)begin
             halt<=1;
         end
 
