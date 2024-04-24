@@ -162,8 +162,8 @@ module main();
     assign reg_raddr1 = (d_reg_rp == 2'b00) ? 3'b001 : 3'b011;
     wire d_uses_hl = d_control[5] || d_control[6] || d_control[9] || d_control[22] || d_control[46] ||
                         d_control[49] || d_control[50];
-    assign reg_raddr2 = d_uses_hl ? 3'b100 : d_reg_src;
-    assign reg_raddr3 = d_uses_hl ? 3'b101 : 3'b111;
+    assign reg_raddr2 = d_uses_hl ? 3'b100 : d_reg_src; // H or src
+    assign reg_raddr3 = d_uses_hl ? 3'b101 : 3'b111; // L or A
     // feeding wires into execute 1 stage
     reg [56:0] x1_control;
     reg [23:0] x1_instruction;
@@ -229,6 +229,13 @@ module main();
     assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_regL_val : wb_regH_val;
     assign mem_wdata1 = wb_regL_val;
 
+    wire [8:0] wb_A_val = wb_control[10] && wb_v ? wb_regH_val + wb_regL_val : // ADD S: add register to A
+                            wb_control[11] && wb_v ? wb_regH_val + wb_instruction[15:8] : // ADI #: add immediate to A
+                            // wb_control[12] && wb_v ? :
+                            0;
+  
+    // CARRY FLAGS
+    reg [7:0] flags; // sign, zero, 0, auxillary carry, 0, parity, 1, carry
 
     always @(posedge clk) begin
         // if(NotValid)begin
@@ -254,6 +261,12 @@ module main();
         wb_regH_val <= x2_regH_val;
         wb_regL_val <= x2_regL_val;
         wb_instruction <= x2_instruction;
+
+        // updating flags:
+        // CMC: compliment carry flag
+        if (wb_control[37]) begin
+            flags[0] <= ~flags[0];
+        end
 
         // shift registers
         if(d_is_two_bytes && d_v) begin
