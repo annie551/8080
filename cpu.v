@@ -158,11 +158,13 @@ module main();
     wire d_is_three_bytes = !(d_is_one_byte || d_is_two_bytes);
     // choose which registers to read
     // registers: RP 1, RP 2, destination/high, low
-    assign reg_raddr0 = (d_reg_rp == 2'b00) ? 3'b000 : 3'b010;
-    assign reg_raddr1 = (d_reg_rp == 2'b00) ? 3'b001 : 3'b011;
+    assign reg_raddr0 = (d_reg_rp == 2'b00) ? 3'b000 : 3'b010; // B or D
+    assign reg_raddr1 = (d_reg_rp == 2'b00) ? 3'b001 : 3'b011; // C or E
     wire d_uses_hl = d_control[5] || d_control[6] || d_control[9] || d_control[22] || d_control[46] ||
                         d_control[49] || d_control[50];
-    assign reg_raddr2 = d_uses_hl ? 3'b100 : d_reg_src; // H or src
+    assign reg_raddr2 = d_uses_hl ? 3'b100 : 
+                        d_control[18] || d_control[19] ? d_reg_dest_cond_restart : 
+                        d_reg_src; // H or destination or src
     assign reg_raddr3 = d_uses_hl ? 3'b101 : 3'b111; // L or A
     // feeding wires into execute 1 stage
     reg [56:0] x1_control;
@@ -215,6 +217,7 @@ module main();
     assign stack_data = (push) ? {x2_rp1_val, x2_rp2_val} : {x2_regH_val, x2_regL_val};
     
     // updated A value, updating normal register value, updating memory (store)
+    // editing A register
     wire wb_edits_A = wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] || wb_control[14] ||
                         wb_control[15] || wb_control[16] || wb_control[17] || wb_control[24] || wb_control[25] ||
                         wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || wb_control[30] ||
@@ -222,32 +225,58 @@ module main();
                         wb_control[36];
     wire [8:0] wb_A_val = (wb_control[10] || wb_control[30]) && wb_v ? wb_regH_val + wb_regL_val : // ADD S: add register to A; CMP S: compare register with A
                             (wb_control[11] || wb_control[31]) && wb_v ? wb_regH_val + wb_instruction[15:8] : // ADI #: add immediate to A; CPI #: compare immediate with A
-                            wb_control[12] && wb_v ? wb_regH_val + wb_regL_val + flags[4] : // ADC S: add register to A with carry
-                            wb_control[13] && wb_v ? wb_regH_val + wb_instruction[15:8] + flags[4] : // ACI #: add immediate to A with carry
+                            wb_control[12] && wb_v ? wb_regH_val + wb_regL_val + flags[0] : // ADC S: add register to A with carry
+                            wb_control[13] && wb_v ? wb_regH_val + wb_instruction[15:8] + flags[0] : // ACI #: add immediate to A with carry
                             wb_control[14] && wb_v ? wb_regH_val - wb_regL_val : // SUB S: subtract register from A
                             wb_control[15] && wb_v ? wb_regH_val - wb_instruction[15:8] : // SUI #: subtract immediate from A
-                            wb_control[16] && wb_v ? wb_regH_val - (wb_regL_val + flags[4]) : // SBB S: subtract register from A with borrow
-                            wb_control[17] && wb_v ? wb_regH_val - (wb_instruction[15:8] + flags[4]) : // SBI #: subtract immediate from A with borrow
+                            wb_control[16] && wb_v ? wb_regH_val - (wb_regL_val + flags[0]) : // SBB S: subtract register from A with borrow
+                            wb_control[17] && wb_v ? wb_regH_val - (wb_instruction[15:8] + flags[0]) : // SBI #: subtract immediate from A with borrow
                             wb_control[24] && wb_v ? wb_regH_val & wb_regL_val : // ANA S: and register with A
                             wb_control[25] && wb_v ? wb_regH_val & wb_instruction : // ANI #: and immediate with A
                             wb_control[26] && wb_v ? wb_regH_val | wb_regL_val : // ORA S: or register with A
                             wb_control[27] && wb_v ? wb_regH_val | wb_instruction[15:8] : // ORI #: or immediate with A
                             wb_control[28] && wb_v ? wb_regH_val ^ wb_regL_val : // XRA S: exclusive OR register with A
                             wb_control[29] && wb_v ? wb_regH_val ^ wb_instruction[15:8] : // XRI #: exclusive or immediate with A
-                            wb_control[32] && wb_v ? (wb_regH_val * 2)[7:0] + wb_regH_val[7] : // RLC : rotate A left
+                            wb_control[32] && wb_v ? (wb_regH_val * 2)%256 + wb_regH_val[7] : // RLC : rotate A left
                             wb_control[33] && wb_v ? (wb_regH_val / 2) + wb_regH_val[0] * 128 : // RRC: rotate A right
-                            wb_control[34] && wb_v ? (wb_regH_val * 2) + flags[4] : // RAL: rotate A left through carry
-                            wb_control[35] && wb_v ? (wb_regH_val / 2) + flags[4] * 128 + wb_regH_val[0] * 256 : // RAR: rotate A right through carry
+                            wb_control[34] && wb_v ? (wb_regH_val * 2) + flags[0] : // RAL: rotate A left through carry
+                            wb_control[35] && wb_v ? (wb_regH_val / 2) + flags[0] * 128 + wb_regH_val[0] * 256 : // RAR: rotate A right through carry
                             wb_control[36] && wb_v ? ~wb_regH_val : 
-                            0;
+                            9'b0;
+    // editing any register
+    wire wb_edits_regs = wb_control[0] || wb_control[1] || wb_control[18] || wb_control[19];
+    wire [7:0] wb_regs_val = wb_control[0] ? wb_regH_val : // MOV D, S: move register to register
+                                wb_control[1] ? wb_instruction[15:8] : // MVI D, #: move immediate to register
+                                wb_control[18] ? wb_regH_val + 1 : // INR D: increment register
+                                wb_control[19] ? wb_regH_val - 1 : // DCR D: decrement register
+                                8'b0;
+    // editing any register pair
+    wire wb_edits_rp = wb_control[9] || wb_control[20] || wb_control[21];
+    wire [15:0] wb_rp_val = wb_control[9] ? {wb_regH_val, wb_regL_val} : // XCHG: exchange DE and HL content
+                            wb_control[20] ? {wb_rp1_val, wb_rp2_val} + 1 : // INX RP: increment register pair
+                            wb_control[21] ? {wb_rp1_val, wb_rp2_val} - 1 : // DCX RP: decrement register pair
+                            16'b0;
+    // editing H:L registers
+    wire wb_edits_hl = wb_control[9] || wb_control[22];
+    wire [15:0] wb_hl_val = wb_control[9] ? {wb_rp1_val, wb_rp2_val} : // XCHG: exchange DE and HL content
+                            wb_control[22] ? {wb_rp1_val, wb_rp2_val} + {wb_regH_val + wb_regL_val} : // DAD RP: add register pair to HL
+                            16'b0;
 
+    // storing to memory
     assign mem_wen0 = wb_control[4] || wb_control[6] || wb_control[8];
     assign mem_wen1 = wb_control[6];
-
     assign mem_waddr0 = ( wb_control[4] || wb_control[6]) ? {wb_instruction[7:0], wb_instruction[15:8]} : {wb_rp1_val, wb_rp2_val};
-
     assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_regL_val : wb_regH_val;
     assign mem_wdata1 = wb_regL_val;
+
+    // condition
+    wire [2:0] condition = wb_instruction[21:19];
+    wire condition_is_true = (condition == 0 && !flags[6]) || (condition == 1 && flags[6]) || (condition == 2 && !flags[0]) || (condition == 3 && flags[0]) || (condition == 4 && !flags[2]) || (condition == 5 && flags[2]) || (condition == 6 && !flags[7]) || (condition == 7 && flags[7]);
+
+    // jumping
+    wire [15:0] jump_location = (wb_control[45]) ? wb_instruction[21:19]*8 :{wb_instruction[7:0], wb_instruction[15:8]};
+    wire jump = (wb_control[39] || wb_control[41] ||(wb_control[40] && condition_is_true) ||(wb_control[42] && condition_is_true)) && wb_v;
+    wire subroutine = (wb_control[41] || wb_control[45] ||(wb_control[42] && condition_is_true)) && wb_v;
   
     // CARRY FLAGS
     reg [7:0] flags; // sign, zero, 0, auxillary carry, 0, parity, 1, carry
@@ -285,26 +314,39 @@ module main();
         end
 
         // shift registers
-        if(d_is_two_bytes && d_v) begin
-            f2_v <= f1_v;
-            d_v<=0;
-            x1_v <= d_v;
-            x2_v <= x1_v;
-            wb_v <= x2_v;
-        end
-        if(d_is_three_bytes && d_v) begin
+        if (jump || subroutine) begin
+            pc<=jump_location;
             f2_v <= 0;
             d_v<=0;
-            x1_v <= d_v;
-            x2_v <= x1_v;
-            wb_v <= x2_v;
+            x1_v <= 0;
+            x2_v <= 0;
+            wb_v <= 0;
         end
-        else begin
-            f2_v <= f1_v;
-            d_v <= f2_v;
-            x1_v <= d_v;
-            x2_v <= x1_v;
-            wb_v <= x2_v;
+        else begin 
+            if(d_is_two_bytes && d_v) begin
+                f2_v <= f1_v;
+                d_v<=0;
+                x1_v <= d_v;
+                x2_v <= x1_v;
+                wb_v <= x2_v;
+                pc<=pc+2;
+            end
+            if(d_is_three_bytes && d_v) begin
+                f2_v <= 0;
+                d_v<=0;
+                x1_v <= d_v;
+                x2_v <= x1_v;
+                wb_v <= x2_v;
+                pc<=pc+2;
+            end
+            else begin
+                f2_v <= f1_v;
+                d_v <= f2_v;
+                x1_v <= d_v;
+                x2_v <= x1_v;
+                wb_v <= x2_v;
+                pc<=pc+2;
+            end
         end
 
 
