@@ -3,7 +3,7 @@
 module mem(input clk,
     input [15:0]raddr0_, output [23:0]rdata0_,
     input [15:0]raddr1_, output [15:0]rdata1_,
-    input wen, input [15:1]waddr, input [15:0]wdata,
+    input wen, input [15:0]waddr, input [15:0]wdata,
     input pop, input push, input[15:0] input_data, input swap, input replace_SP,
     output[15:0] out);
 
@@ -33,10 +33,11 @@ module mem(input clk,
     always @(posedge clk) begin
         raddr0 <= raddr0_;
         raddr1 <= raddr1_;
-        rdata0 <= {data[raddr0],data[raddr0+1],data[raddr0+2]};
-        rdata1 <= {data[raddr1], data[raddr1+1]};
+        rdata0 <= {data[raddr0],data[raddr0+1],data[raddr0+2]};  //reads in instructions 3 bytes at a time
+        rdata1 <= {data[raddr1], data[raddr1+1]};   //loads two bytes at a time
         if (wen) begin
-            data[waddr] <= wdata;
+            data[waddr] <= wdata[15:8];
+            data[waddr+1]<=wdata[7:0];
         end
 
         if(push) begin
