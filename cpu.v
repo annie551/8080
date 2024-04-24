@@ -189,7 +189,9 @@ module main();
 
     // EXECUTE 1
     // loading things into memory
-    assign mem_raddr = x1_control[7] ? {r_data0, r_data1} : {d_hb, d_lb}; // TODO: forward later
+    assign mem_raddr = x1_control[7] ? {x1_rp1_val, x1_rp2_val} : 
+                        (x1_control[3] || x1_control[5]) {d_hb, d_lb} :
+                        {x1_regH_val, x1_regL_val}; // TODO: forward later
     // feeding wires into execute 2 stage
     reg [56:0] x2_control;
     reg [7:0] x2_rp1_val;
