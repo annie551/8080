@@ -193,17 +193,25 @@ module main();
 
     // instructions that change flags
     // TODO: auxillary flag will be updated later
-    wire wb_edits_flags = wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] ||
+    wire wb_edits_flags = (wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] ||
                             wb_control[14] || wb_control[15] || wb_control[16] || wb_control[17] ||
                             wb_control[18] || wb_control[19] || wb_control[23] || wb_control[24] || 
                             wb_control[25] || wb_control[26] || wb_control[27] || wb_control[28] || 
-                            wb_control[29] || wb_control[30] || wb_control[31];
-    wire wb_edits_carry = wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] ||
+                            wb_control[29] || wb_control[30] || wb_control[31]) && wb_v;
+    wire wb_edits_carry = (wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] ||
                             wb_control[14] || wb_control[15] || wb_control[16] || wb_control[17] ||
                             wb_control[22] || wb_control[23] || wb_control[24] || wb_control[25] || 
                             wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || 
                             wb_control[30] || wb_control[31] || wb_control[32] || wb_control[33] ||
-                            wb_control[34] || wb_control[35] || wb_control[37] || wb_control[39];
+                            wb_control[34] || wb_control[35] || wb_control[37] || wb_control[39]) && wb_v;
+
+    assign push = x2_control[47] && x2_v;
+    assign pop = wb_control[48] && x2_v;
+    assign swap = wb_control[49] && x2_v;
+    assign replace_SP = wb_control[50] && x2_v;
+
+    assign stack_data = (push) ? {x2_rp1_val, x2_rp2_val} : {x2_regH_val, x2_regL_val};
+    
 
     always @(posedge clk) begin
         // if(NotValid)begin
