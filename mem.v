@@ -11,7 +11,7 @@ module mem(input clk,
 
     reg [7:0]data[0:16'hffff];
 
-    reg[15:0] stack_top=16'hffff;
+    reg[16:0] stack_top=20'h10000;
 
     /* Simulation -- read initial content from file */
     initial begin
@@ -42,19 +42,19 @@ module mem(input clk,
 
         if(push) begin
             stack_top<=stack_top-2;
-            data[stack_top]<=input_data[7:0];
             data[stack_top-1]<=input_data[15:8];
+            data[stack_top-2]<=input_data[7:0];
         end
 
         if(pop) begin
             stack_top<=stack_top+2;
-            data_out<={data[stack_top+1],data[stack_top+2]};
+            data_out<={data[stack_top+1],data[stack_top]};
         end
 
         if(swap) begin
-            data[stack_top+2]<=input_data[7:0];
+            data[stack_top]<=input_data[7:0];
             data[stack_top+1]<=input_data[15:8];
-            data_out<={data[stack_top+1],data[stack_top+2]};
+            data_out<={data[stack_top+1],data[stack_top]};
         end
 
         if(wen && waddr>16'hbfff) begin
