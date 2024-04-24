@@ -164,43 +164,46 @@ module main();
     assign reg_raddr3 = d_uses_hl ? 3'b101 : 3'b111;
     // feeding wires into execute 1 stage
     reg [56:0] x1_control;
-    reg [7:0] x1_lb;
-    reg [7:0] x1_hb;
-    reg [2:0] x1_reg_src;
-    reg [2:0] x1_rp1; // first half of register pair
-    reg [2:0] x1_rp2;
-    reg [2:0] x1_regH; // could also be destination, condition, or restart immediate
-    reg [2:0] x1_regL;
-    reg [2:0] x1_reg_dest_cond_restart;
     reg [23:0] x1_instruction;
+
+    wire [7:0] x1_rp1_val = r_data0;
+    wire [7:0] x1_rp2_val = r_data1;
+    wire [7:0] x1_regH_val = r_data2;
+    wire [7:0] x1_regL_val = r_data3;
 
     // EXECUTE 1
     // loading things into memory
     assign mem_raddr = x1_control[7] ? {r_data0, r_data1} : {d_hb, d_lb}; // TODO: forward later
+    // feeding wires into execute 2 stage
     reg [56:0] x2_control;
-    reg [7:0] x2_lb;
-    reg [7:0] x2_hb;
-    reg [2:0] x2_reg_src;
-    reg [2:0] x2_rp1; // first half of register pair
-    reg [2:0] x2_rp2;
-    reg [2:0] x2_regH; // could also be destination, condition, or restart immediate
-    reg [2:0] x2_regL;
-    reg [2:0] x2_reg_dest_cond_restart;
+    reg [7:0] x2_rp1_val;
+    reg [7:0] x2_rp2_val;
+    reg [7:0] x2_regH_val;
+    reg [7:0] x2_regL_val;
     reg [23:0] x2_instruction;
 
     // EXECUTE 2
+    // feeding wires into writeback
     reg [56:0] wb_control;
-    reg [7:0] wb_lb;
-    reg [7:0] wb_hb;
-    reg [2:0] wb_reg_src;
-    reg [2:0] wb_rp1; // first half of register pair
-    reg [2:0] wb_rp2;
-    reg [2:0] wb_regH; // could also be destination, condition, or restart immediate
-    reg [2:0] wb_regL;
-    reg [2:0] wb_reg_dest_cond_restart;
+    reg [7:0] wb_rp1_val;
+    reg [7:0] wb_rp2_val;
+    reg [7:0] wb_regH_val;
+    reg [7:0] wb_regL_val;
     reg [23:0] wb_instruction;
 
-
+    // instructions that change flags
+    // TODO: auxillary flag will be updated later
+    wire wb_edits_flags = wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] ||
+                            wb_control[14] || wb_control[15] || wb_control[16] || wb_control[17] ||
+                            wb_control[18] || wb_control[19] || wb_control[23] || wb_control[24] || 
+                            wb_control[25] || wb_control[26] || wb_control[27] || wb_control[28] || 
+                            wb_control[29] || wb_control[30] || wb_control[31];
+    wire wb_edits_carry = wb_control[10] || wb_control[11] || wb_control[12] || wb_control[13] ||
+                            wb_control[14] || wb_control[15] || wb_control[16] || wb_control[17] ||
+                            wb_control[22] || wb_control[23] || wb_control[24] || wb_control[25] || 
+                            wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || 
+                            wb_control[30] || wb_control[31] || wb_control[32] || wb_control[33] ||
+                            wb_control[34] || wb_control[35] || wb_control[37] || wb_control[39];
 
     always @(posedge clk) begin
         // if(NotValid)begin
@@ -209,38 +212,22 @@ module main();
 
         // feeding wires from decode to execute 1
         x1_control <= d_control;
-        x1_lb <= d_lb;
-        x1_hb <= d_hb;
-        x1_reg_src <= d_reg_src;
-        x1_rp1 <= reg_raddr0;
-        x1_rp2 <= reg_raddr1; 
-        x1_regH <= reg_raddr2;
-        x1_regL <= reg_raddr3;
-        x1_reg_dest_cond_restart <= d_reg_dest_cond_restart;
         x1_instruction <= d_instruction;
 
         // feeding wires from execute 1 to execute 2
         x2_control <= x1_control;
-        x2_lb <= x1_lb;
-        x2_hb <= x1_hb;
-        x2_reg_src <= x1_reg_src;
-        x2_rp1 <= x1_rp1;
-        x2_rp2 <= x1_rp2;
-        x2_regH <= x1_regH;
-        x2_regL <= x1_regL;
-        x2_reg_dest_cond_restart <= x1_reg_dest_cond_restart;
+        x2_rp1_val <= x1_rp1_val;
+        x2_rp2_val <= x1_rp2_val;
+        x2_regH_val <= x1_regH_val;
+        x2_regL_val <= x1_regL_val;
         x2_instruction <= x1_instruction;
 
         // feeding wires from execute 2 to writeback
         wb_control <= x2_control;
-        wb_lb <= x2_lb;
-        wb_hb <= x2_hb;
-        wb_reg_src <= x2_reg_src;
-        wb_rp1 <= x2_rp1;
-        wb_rp2 <= x2_rp2;
-        wb_regH <= x2_regH;
-        wb_regL <= x2_regL;
-        wb_reg_dest_cond_restart <= x2_reg_dest_cond_restart;
+        wb_rp1_val <= x2_rp1_val;
+        wb_rp2_val <= x2_rp2_val;
+        wb_regH_val <= x2_regH_val;
+        wb_regL_val <= x2_regL_val;
         wb_instruction <= x2_instruction;
 
         // shift registers
