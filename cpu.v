@@ -319,9 +319,9 @@ module main();
     // TODO: when setting carry flag, if addition, take top bit; if subtraction and result is 1, take the reverse of the current carry flag
 
     always @(posedge clk) begin
-        // if(NotValid)begin
-        //     halt<=1;
-        // end
+        if(wb_control[55])begin
+            halt<=1;
+        end
 
         // feeding wires from decode to execute 1
         x1_control <= d_control;
