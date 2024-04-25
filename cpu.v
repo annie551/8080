@@ -316,6 +316,40 @@ module main();
                         wb_edits_hl ? wb_hl_val :
                         wb_edits_rp ? wb_rp_val : 
                         0;
+
+
+    assign reg_wen0 = (wb_edits_A || wb_edits_regs || wb_edits_hl || wb_edits_rp) && wb_v;
+    assign reg_wen1 = (wb_edits_hl || wb_edits_rp) && wb_v;
+    assign reg_wen2 = wb_control[9] & wb_v;
+    assign reg_wen3 = wb_control[9] & wb_v;
+
+    assign reg_waddr0 = (wb_edits_A) ? 3'b111 :
+                        (wb_edits_regs) ? wb_instruction[21:19] :
+                        (wb_edits_hl) ? 3'b100 :
+                        (wb_edits_rp && wb_instruction[21:20]==2'b00) ? 3'b000 : 
+                        (wb_edits_rp && wb_instruction[21:20]==2'b01) ? 3'b010 : 
+                        0;
+
+    assign reg_waddr1 = (wb_edits_hl) ? 3'b101 :
+                        (wb_edits_rp && wb_instruction[21:20]==2'b00) ? 3'b001 : 
+                        (wb_edits_rp && wb_instruction[21:20]==2'b01) ? 3'b011 : 
+                        0;
+
+    assign reg_waddr2 = (wb_instruction[21:20]==2'b00) ? 3'b000 : 
+                        (wb_instruction[21:20]==2'b01) ? 3'b010 :
+                        0;
+
+    assign reg_waddr3 = (wb_instruction[21:20]==2'b00) ? 3'b001 : 
+                        (wb_instruction[21:20]==2'b01) ? 3'b011 :
+                        0;
+
+    assign reg_wdata0 = wb_val[15:8];
+    assign reg_wdata1 = wb_val[7:0];
+    assign reg_wdata2 = wb_rp_val[15:8];
+    assign reg_wdata3 = wb_rp_val[7:0];
+
+
+
   
     // CARRY FLAGS
     reg [7:0] flags; // sign, zero, 0, auxillary carry, 0, parity, 1, carry
@@ -425,8 +459,8 @@ module main();
 
         // check if its one or two or three bytes and adjust pc and shift registers
 
-        if(wb_control[52]) begin
-            $write("%c",(reg_wdata&8'b11111111));
+        if(wb_control[52] && wb_v) begin
+            $write("%c",(wb_val&8'b11111111));
         end
         halt<=1;
     end
