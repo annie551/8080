@@ -12,8 +12,7 @@ module main();
     wire clk;
     clock c0(clk);
 
-    reg[3:0] halt = 0;
-    wire isHalt = halt>5;
+    reg halt = 0;
 
     reg[15:0] pc=0;
     reg [15:0]f2_pc;
@@ -22,7 +21,7 @@ module main();
     reg [15:0]x2_pc;
     reg [15:0]wb_pc;
 
-    counter ctr(isHalt,clk);
+    counter ctr(halt,clk);
 
 
     // read from memory
@@ -228,7 +227,7 @@ module main();
                             wb_control[30] || wb_control[31] || wb_control[32] || wb_control[33] ||
                             wb_control[34] || wb_control[35]) && wb_v;
 
-    wire flushed = jump || return || subroutine || just_returned;
+    wire flushed = (((jump || return || subroutine)&&wb_v) || just_returned) ;
 
     assign push = ((x2_control[47] && x2_v) && !flushed) || subroutine;
     assign pop = (wb_control[48] && x2_v && !flushed) || return;
@@ -327,7 +326,7 @@ module main();
                         0;
 
 
-    assign reg_wen0 = (wb_edits_A || (wb_edits_regs && destination_is_M) || wb_edits_hl || wb_edits_rp) && wb_v;
+    assign reg_wen0 = (wb_edits_A || (wb_edits_regs && !destination_is_M) || wb_edits_hl || wb_edits_rp) && wb_v;
     assign reg_wen1 = (wb_edits_hl || wb_edits_rp) && wb_v;
     assign reg_wen2 = wb_control[9] & wb_v;
     assign reg_wen3 = wb_control[9] & wb_v;
@@ -442,7 +441,7 @@ module main();
                 wb_v <= x2_v;
                 pc<=pc+1;
             end
-            if(d_is_three_bytes && d_v) begin
+            else if(d_is_three_bytes && d_v) begin
                 f2_v <= 0;
                 d_v<=0;
                 x1_v <= d_v;
@@ -471,7 +470,6 @@ module main();
         if(wb_control[52] && wb_v) begin
             $write("%c",(wb_val&8'b11111111));
         end
-        halt<=halt+1;
     end
 
 

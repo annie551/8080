@@ -29,6 +29,15 @@ module regs(input clk,
     assign rdata2 = data[raddr4];
     assign rdata3 = data[raddr5];
 
+    wire[7:0] reg0=data[0];
+    wire[7:0] reg1=data[1];
+    wire[7:0] reg2=data[2];
+    wire[7:0] reg3=data[3];
+    wire[7:0] reg4=data[4];
+    wire[7:0] reg5=data[5];
+    wire[7:0] reg6=data[6];
+    wire[7:0] reg7=data[7];
+
     always @(posedge clk) begin
         raddr0 <= raddr0_;
         raddr1 <= raddr1_;
