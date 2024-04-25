@@ -12,7 +12,8 @@ module main();
     wire clk;
     clock c0(clk);
 
-    reg halt = 0;
+    reg[3:0] halt = 0;
+    wire isHalt = halt>5;
 
     reg[15:0] pc=0;
     reg [15:0]f2_pc;
@@ -21,7 +22,7 @@ module main();
     reg [15:0]x2_pc;
     reg [15:0]wb_pc;
 
-    counter ctr(halt,clk);
+    counter ctr(isHalt,clk);
 
 
     // read from memory
@@ -439,7 +440,7 @@ module main();
                 x1_v <= d_v;
                 x2_v <= x1_v;
                 wb_v <= x2_v;
-                pc<=pc+2;
+                pc<=pc+1;
             end
             if(d_is_three_bytes && d_v) begin
                 f2_v <= 0;
@@ -447,7 +448,7 @@ module main();
                 x1_v <= d_v;
                 x2_v <= x1_v;
                 wb_v <= x2_v;
-                pc<=pc+2;
+                pc<=pc+1;
             end
             else begin
                 f2_v <= f1_v;
@@ -455,7 +456,7 @@ module main();
                 x1_v <= d_v;
                 x2_v <= x1_v;
                 wb_v <= x2_v;
-                pc<=pc+2;
+                pc<=pc+1;
             end
         end
 
@@ -470,7 +471,7 @@ module main();
         if(wb_control[52] && wb_v) begin
             $write("%c",(wb_val&8'b11111111));
         end
-        halt<=1;
+        halt<=halt+1;
     end
 
 

@@ -20,7 +20,7 @@ module mem(input clk,
     end
 
     reg [15:0]raddr0;
-    reg [15:0]rdata0;
+    reg [23:0]rdata0;
 
     reg [15:0]raddr1;
     reg [15:0]rdata1;
@@ -30,6 +30,8 @@ module mem(input clk,
 
     reg[15:0] data_out;
     assign out = data_out;
+
+    wire [95:0] stuff= {data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9],data[10],data[11]};
 
     always @(posedge clk) begin
         raddr0 <= raddr0_;
