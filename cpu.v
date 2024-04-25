@@ -246,6 +246,7 @@ module main();
                         wb_control[35] || wb_control[36];
     // TODO: check using accumulator value and get from regs, if from src and is MMM use memory loaded value
     wire [7:0] wb_src_or_M_val = wb_instruction[18:16] == 3'b110 ? mem_loaded_data[15:8] : wb_source_destination_val;
+    wire [7:0] wb_dest_or_M_val = wb_instruction[21:19] == 3'b110 ? mem_loaded_data[15:8] : wb_source_destination_val;
     wire [8:0] wb_A_val = (wb_control[3] || wb_control[7]) ? mem_loaded_data[15:8] : // LDA a: load A from memory
                             (wb_control[10] || wb_control[30]) ? wb_accumulator_val + wb_src_or_M_val : // ADD S: add register to A; CMP S: compare register with A
                             (wb_control[11] || wb_control[31]) ? wb_accumulator_val + wb_instruction[15:8] : // ADI #: add immediate to A; CPI #: compare immediate with A
@@ -269,10 +270,10 @@ module main();
                             9'b0;
     // editing any register
     wire wb_edits_regs = wb_control[0] || wb_control[1] || wb_control[18] || wb_control[19];
-    wire [7:0] wb_regs_val = wb_control[0] ? wb_regH_val : // MOV D, S: move register to register
+    wire [7:0] wb_regs_val = wb_control[0] ? wb_src_or_M_val : // MOV D, S: move register to register
                                 wb_control[1] ? wb_instruction[15:8] : // MVI D, #: move immediate to register
-                                wb_control[18] ? wb_regH_val + 1 : // INR D: increment register
-                                wb_control[19] ? wb_regH_val - 1 : // DCR D: decrement register
+                                wb_control[18] ? wb_dest_or_M_val + 1 : // INR D: increment register
+                                wb_control[19] ? wb_dest_or_M_val - 1 : // DCR D: decrement register
                                 8'b0;
     // editing any register pair
     wire wb_edits_rp = wb_control[2] || wb_control[9] || wb_control[20] || wb_control[21];
@@ -288,11 +289,18 @@ module main();
                             wb_control[22] ? {wb_rp1_val, wb_rp2_val} + {wb_regH_val + wb_regL_val} : // DAD RP: add register pair to HL
                             16'b0;
 
+
+    wire destination_is_M = wb_edits_regs && wb_instruction[21:19]==3'b110;
+
     // storing to memory
-    assign mem_wen0 = wb_control[4] || wb_control[6] || wb_control[8];
-    assign mem_wen1 = wb_control[6];
-    assign mem_waddr = ( wb_control[4] || wb_control[6]) ? {wb_instruction[7:0], wb_instruction[15:8]} : {wb_rp1_val, wb_rp2_val};
-    assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_accumulator_val : wb_regH_val;
+    assign mem_wen0 = (wb_control[4] || wb_control[6] || wb_control[8] || destination_is_M) && wb_v;
+    assign mem_wen1 = wb_control[6] && wb_v;
+    assign mem_waddr = ( wb_control[4] || wb_control[6]) ? {wb_instruction[7:0], wb_instruction[15:8]} : 
+                        (destination_is_M) ? {wb_regH_val, wb_regL_val} : 
+                        {wb_rp1_val, wb_rp2_val};
+    assign mem_wdata0 = (wb_control[4] || wb_control[8]) ? wb_accumulator_val :
+                        (destination_is_M) ? wb_regs_val: 
+                        wb_regH_val;
     assign mem_wdata1 = wb_regL_val;
 
     // condition
@@ -318,7 +326,7 @@ module main();
                         0;
 
 
-    assign reg_wen0 = (wb_edits_A || wb_edits_regs || wb_edits_hl || wb_edits_rp) && wb_v;
+    assign reg_wen0 = (wb_edits_A || (wb_edits_regs && destination_is_M) || wb_edits_hl || wb_edits_rp) && wb_v;
     assign reg_wen1 = (wb_edits_hl || wb_edits_rp) && wb_v;
     assign reg_wen2 = wb_control[9] & wb_v;
     assign reg_wen3 = wb_control[9] & wb_v;
