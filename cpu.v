@@ -92,8 +92,8 @@ module main();
     wire d_sta = (d_opcode[7:0] == 8'b00110010);
     wire d_lhld = (d_opcode[7:0] == 8'b00101010);
     wire d_shld = (d_opcode[7:0] == 8'b00100010);
-    wire d_ldax = (d_opcode[7:6] == 2'b00) && (d_opcode[3:0] == 4'b1010);
-    wire d_stax = (d_opcode[7:6] == 2'b00) && (d_opcode[3:0] == 4'b0010);
+    wire d_ldax = (d_opcode[7:6] == 2'b00) && (d_opcode[3:0] == 4'b1010) && (d_opcode[5:4]==2'b00 || d_opcode[5:4]==2'b01);
+    wire d_stax = (d_opcode[7:6] == 2'b00) && (d_opcode[3:0] == 4'b0010) && (d_opcode[5:4]==2'b00 || d_opcode[5:4]==2'b01);
     wire d_xchg = (d_opcode[7:0] == 8'b11101011);
     wire d_add = (d_opcode[7:3] == 5'b10000);
     wire d_adi = (d_opcode[7:0] == 8'b11000110);
@@ -175,22 +175,45 @@ module main();
     assign reg_raddr5 = (d_control[18] || d_control[19]) ? d_reg_dest_cond_restart : 
                         d_reg_src; // destination or src
 
+    reg [2:0] x1_reg_raddr0;
+    reg [2:0] x1_reg_raddr1;
+    reg [2:0] x1_reg_raddr2;
+    reg [2:0] x1_reg_raddr3;
+    reg [2:0] x1_reg_raddr4;
+    reg [2:0] x1_reg_raddr5;
+
+    reg [2:0] x2_reg_raddr0;
+    reg [2:0] x2_reg_raddr1;
+    reg [2:0] x2_reg_raddr2;
+    reg [2:0] x2_reg_raddr3;
+    reg [2:0] x2_reg_raddr4;
+    reg [2:0] x2_reg_raddr5;
 
     // feeding wires into execute 1 stage
     reg [56:0] x1_control;
     reg [23:0] x1_instruction;
 
-    wire [7:0] x1_rp1_val = r_data0;
-    wire [7:0] x1_rp2_val = r_data1;
-    wire [7:0] x1_regH_val = r_data2;
-    wire [7:0] x1_regL_val = r_data3;
-    wire [7:0] x1_accumulator_val = r_data4;
-    wire [7:0] x1_source_destination_val=r_data5;
+    wire [7:0] x1_rp1_val = (x1_reg_raddr0==reg_waddr0 && reg_wen0) ? reg_wdata0 :
+                            (x1_reg_raddr0==reg_waddr2 && reg_wen2) ? reg_wdata2 :
+                            r_data0;
+    wire [7:0] x1_rp2_val = (x1_reg_raddr1==reg_waddr1 && reg_wen1) ? reg_wdata1 :
+                            (x1_reg_raddr1==reg_waddr3 && reg_wen3) ? reg_wdata3 :
+                            r_data1;
+    wire [7:0] x1_regH_val = (x1_reg_raddr2==reg_waddr0 && reg_wen0) ? reg_wdata0 :
+                            r_data2;
+    wire [7:0] x1_regL_val = (x1_reg_raddr3==reg_waddr1 && reg_wen1) ? reg_wdata1 :
+                            r_data3;
+    wire [7:0] x1_accumulator_val = (x1_reg_raddr4==reg_waddr0 && reg_wen0) ? reg_wdata0 :
+                                    r_data4;
+    wire [7:0] x1_source_destination_val=(x1_reg_raddr5==reg_waddr0 && reg_wen0) ? reg_wdata0 :
+                                            r_data5;
+
+
 
     // EXECUTE 1
     // loading things into memory
     assign mem_raddr = x1_control[7] ? {x1_rp1_val, x1_rp2_val} : 
-                        (x1_control[3] || x1_control[5]) ? {d_hb, d_lb} :
+                        (x1_control[3] || x1_control[5]) ? {x1_instruction[7:0], x1_instruction[15:8]} :
                         {x1_regH_val, x1_regL_val}; // TODO: forward later
     // feeding wires into execute 2 stage
     reg [56:0] x2_control;
@@ -201,6 +224,21 @@ module main();
     reg [7:0] x2_accumulator_val;
     reg [7:0] x2_source_destination_val;
     reg [23:0] x2_instruction;
+
+    wire [7:0] x2_rp1_val_real = (x2_reg_raddr0==reg_waddr0 && reg_wen0) ? reg_wdata0 :
+                                (x2_reg_raddr0==reg_waddr2 && reg_wen2) ? reg_wdata2 :
+                                x2_rp1_val;
+    wire [7:0] x2_rp2_val_real = (x2_reg_raddr1==reg_waddr1 && reg_wen1) ? reg_wdata1 :
+                                (x2_reg_raddr1==reg_waddr3 && reg_wen3) ? reg_wdata3 :
+                                x2_rp2_val;
+    wire [7:0] x2_regH_val_real = (x2_reg_raddr2==reg_waddr0 && reg_wen0) ? reg_wdata0 :
+                                x2_regH_val;
+    wire [7:0] x2_regL_val_real = (x2_reg_raddr3==reg_waddr1 && reg_wen1) ? reg_wdata1 :
+                                    x2_regL_val;
+    wire [7:0] x2_accumulator_val_real = (x2_reg_raddr4==reg_waddr0 && reg_wen0) ? reg_wdata0 :
+                                            x2_accumulator_val;
+    wire [7:0] x2_source_destination_val_real = (x2_reg_raddr5==reg_waddr0 && reg_wen0) ? reg_wdata0 :
+                                                x2_source_destination_val;
 
     // EXECUTE 2
     // feeding wires into writeback
@@ -384,13 +422,27 @@ module main();
 
         // feeding wires from execute 2 to writeback
         wb_control <= x2_control;
-        wb_rp1_val <= x2_rp1_val;
-        wb_rp2_val <= x2_rp2_val;
-        wb_regH_val <= x2_regH_val;
-        wb_regL_val <= x2_regL_val;
-        wb_accumulator_val <= x2_accumulator_val;
-        wb_source_destination_val <= x2_source_destination_val;
+        wb_rp1_val <= x2_rp1_val_real;
+        wb_rp2_val <= x2_rp2_val_real;
+        wb_regH_val <= x2_regH_val_real;
+        wb_regL_val <= x2_regL_val_real;
+        wb_accumulator_val <= x2_accumulator_val_real;
+        wb_source_destination_val <= x2_source_destination_val_real;
         wb_instruction <= x2_instruction;
+
+        x1_reg_raddr0<=reg_raddr0;
+        x1_reg_raddr1<=reg_raddr1;
+        x1_reg_raddr2<=reg_raddr2;
+        x1_reg_raddr3<=reg_raddr3;
+        x1_reg_raddr4<=reg_raddr4;
+        x1_reg_raddr5<=reg_raddr5;
+
+        x2_reg_raddr0<=x1_reg_raddr0;
+        x2_reg_raddr1<=x1_reg_raddr1;
+        x2_reg_raddr2<=x1_reg_raddr2;
+        x2_reg_raddr3<=x1_reg_raddr3;
+        x2_reg_raddr4<=x1_reg_raddr4;
+        x2_reg_raddr5<=x1_reg_raddr5;
 
         // updating flags:
         // CMC: compliment carry flag

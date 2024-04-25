@@ -26,8 +26,8 @@ module regs(input clk,
     assign rdata1 = data[raddr1];
     assign rdata2 = data[raddr2];
     assign rdata3 = data[raddr3];
-    assign rdata2 = data[raddr4];
-    assign rdata3 = data[raddr5];
+    assign rdata4 = data[raddr4];
+    assign rdata5 = data[raddr5];
 
     wire[7:0] reg0=data[0];
     wire[7:0] reg1=data[1];
