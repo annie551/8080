@@ -244,26 +244,28 @@ module main();
                         wb_control[25] || wb_control[26] || wb_control[27] || wb_control[28] || wb_control[29] || 
                         wb_control[30] || wb_control[31] || wb_control[32] || wb_control[33] || wb_control[34] || 
                         wb_control[35] || wb_control[36];
-    wire [8:0] wb_A_val = (wb_control[3] || wb_control[7]) && wb_v ? mem_loaded_data[15:8] : // LDA a: load A from memory
-                            (wb_control[10] || wb_control[30]) && wb_v ? wb_regH_val + wb_regL_val : // ADD S: add register to A; CMP S: compare register with A
-                            (wb_control[11] || wb_control[31]) && wb_v ? wb_regH_val + wb_instruction[15:8] : // ADI #: add immediate to A; CPI #: compare immediate with A
-                            wb_control[12] && wb_v ? wb_regH_val + wb_regL_val + flags[0] : // ADC S: add register to A with carry
-                            wb_control[13] && wb_v ? wb_regH_val + wb_instruction[15:8] + flags[0] : // ACI #: add immediate to A with carry
-                            wb_control[14] && wb_v ? wb_regH_val - wb_regL_val : // SUB S: subtract register from A
-                            wb_control[15] && wb_v ? wb_regH_val - wb_instruction[15:8] : // SUI #: subtract immediate from A
-                            wb_control[16] && wb_v ? wb_regH_val - (wb_regL_val + flags[0]) : // SBB S: subtract register from A with borrow
-                            wb_control[17] && wb_v ? wb_regH_val - (wb_instruction[15:8] + flags[0]) : // SBI #: subtract immediate from A with borrow
-                            wb_control[24] && wb_v ? wb_regH_val & wb_regL_val : // ANA S: and register with A
-                            wb_control[25] && wb_v ? wb_regH_val & wb_instruction : // ANI #: and immediate with A
-                            wb_control[26] && wb_v ? wb_regH_val | wb_regL_val : // ORA S: or register with A
-                            wb_control[27] && wb_v ? wb_regH_val | wb_instruction[15:8] : // ORI #: or immediate with A
-                            wb_control[28] && wb_v ? wb_regH_val ^ wb_regL_val : // XRA S: exclusive OR register with A
-                            wb_control[29] && wb_v ? wb_regH_val ^ wb_instruction[15:8] : // XRI #: exclusive or immediate with A
-                            wb_control[32] && wb_v ? (wb_regH_val * 2)%256 + wb_regH_val[7] : // RLC : rotate A left
-                            wb_control[33] && wb_v ? (wb_regH_val / 2) + wb_regH_val[0] * 128 : // RRC: rotate A right
-                            wb_control[34] && wb_v ? (wb_regH_val * 2) + flags[0] : // RAL: rotate A left through carry
-                            wb_control[35] && wb_v ? (wb_regH_val / 2) + flags[0] * 128 + wb_regH_val[0] * 256 : // RAR: rotate A right through carry
-                            wb_control[36] && wb_v ? ~wb_regH_val : // CMA: compliment A
+    // TODO: check using accumulator value and get from regs, if from src and is MMM use memory loaded value
+    wire [7:0] wb_src_or_M_val = wb_instruction[18:16] == 3'b110 ? mem_loaded_data[15:8] : wb_source_destination_val;
+    wire [8:0] wb_A_val = (wb_control[3] || wb_control[7]) ? mem_loaded_data[15:8] : // LDA a: load A from memory
+                            (wb_control[10] || wb_control[30]) ? wb_regH_val + wb_regL_val : // ADD S: add register to A; CMP S: compare register with A
+                            (wb_control[11] || wb_control[31]) ? wb_regH_val + wb_instruction[15:8] : // ADI #: add immediate to A; CPI #: compare immediate with A
+                            wb_control[12] ? wb_accumulator_val + wb_regL_val + flags[0] : // ADC S: add register to A with carry
+                            wb_control[13] ? wb_regH_val + wb_instruction[15:8] + flags[0] : // ACI #: add immediate to A with carry
+                            wb_control[14] ? wb_regH_val - wb_regL_val : // SUB S: subtract register from A
+                            wb_control[15] ? wb_regH_val - wb_instruction[15:8] : // SUI #: subtract immediate from A
+                            wb_control[16] ? wb_regH_val - (wb_regL_val + flags[0]) : // SBB S: subtract register from A with borrow
+                            wb_control[17] ? wb_regH_val - (wb_instruction[15:8] + flags[0]) : // SBI #: subtract immediate from A with borrow
+                            wb_control[24] ? wb_regH_val & wb_regL_val : // ANA S: and register with A
+                            wb_control[25] ? wb_regH_val & wb_instruction : // ANI #: and immediate with A
+                            wb_control[26] ? wb_regH_val | wb_regL_val : // ORA S: or register with A
+                            wb_control[27] ? wb_regH_val | wb_instruction[15:8] : // ORI #: or immediate with A
+                            wb_control[28] ? wb_regH_val ^ wb_regL_val : // XRA S: exclusive OR register with A
+                            wb_control[29] ? wb_regH_val ^ wb_instruction[15:8] : // XRI #: exclusive or immediate with A
+                            wb_control[32] ? (wb_regH_val * 2)%256 + wb_regH_val[7] : // RLC : rotate A left
+                            wb_control[33] ? (wb_regH_val / 2) + wb_regH_val[0] * 128 : // RRC: rotate A right
+                            wb_control[34] ? (wb_regH_val * 2) + flags[0] : // RAL: rotate A left through carry
+                            wb_control[35] ? (wb_regH_val / 2) + flags[0] * 128 + wb_regH_val[0] * 256 : // RAR: rotate A right through carry
+                            wb_control[36] ? ~wb_regH_val : // CMA: compliment A
                             9'b0;
     // editing any register
     wire wb_edits_regs = wb_control[0] || wb_control[1] || wb_control[18] || wb_control[19];
