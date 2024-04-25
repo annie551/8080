@@ -184,13 +184,13 @@ module main();
     wire [7:0] x1_rp2_val = r_data1;
     wire [7:0] x1_regH_val = r_data2;
     wire [7:0] x1_regL_val = r_data3;
-    wire [7:0] x1_accumulator_val = rdata4;
+    wire [7:0] x1_accumulator_val = r_data4;
     wire [7:0] x1_source_destination_val=r_data5;
 
     // EXECUTE 1
     // loading things into memory
     assign mem_raddr = x1_control[7] ? {x1_rp1_val, x1_rp2_val} : 
-                        (x1_control[3] || x1_control[5]) {d_hb, d_lb} :
+                        (x1_control[3] || x1_control[5]) ? {d_hb, d_lb} :
                         {x1_regH_val, x1_regL_val}; // TODO: forward later
     // feeding wires into execute 2 stage
     reg [56:0] x2_control;
@@ -198,8 +198,8 @@ module main();
     reg [7:0] x2_rp2_val;
     reg [7:0] x2_regH_val;
     reg [7:0] x2_regL_val;
-    wire [7:0] x2_accumulator_val;
-    wire [7:0] x2_source_destination_val;
+    reg [7:0] x2_accumulator_val;
+    reg [7:0] x2_source_destination_val;
     reg [23:0] x2_instruction;
 
     // EXECUTE 2
@@ -209,8 +209,8 @@ module main();
     reg [7:0] wb_rp2_val;
     reg [7:0] wb_regH_val;
     reg [7:0] wb_regL_val;
-    wire [7:0] wb_accumulator_val;
-    wire [7:0] wb_source_destination_val;
+    reg [7:0] wb_accumulator_val;
+    reg [7:0] wb_source_destination_val;
     reg [23:0] wb_instruction;
 
     // instructions that change flags
@@ -301,7 +301,7 @@ module main();
 
     // jumping
     wire [15:0] jump_location = (wb_control[45]) ? wb_instruction[21:19]*8 :
-                                (wb_control[46]) ? : {wb_regH_val, wb_regL_val} :
+                                (wb_control[46]) ? {wb_regH_val, wb_regL_val} :
                                 {wb_instruction[7:0], wb_instruction[15:8]};
     wire jump = (wb_control[39] || wb_control[46] ||(wb_control[40] && condition_is_true)) && wb_v;
     wire subroutine = (wb_control[41] || wb_control[45] ||(wb_control[42] && condition_is_true)) && wb_v;
@@ -311,10 +311,11 @@ module main();
     reg just_returned;
 
     // actual value to be written back to register or memory
-    wire [8:0] wb_val = wb_edits_A ? wb_A_val :
-                        wb_edits_regs ? wb_regs_val :
+    wire [15:0] wb_val = wb_edits_A ? wb_A_val[7:0] *256 :
+                        wb_edits_regs ? wb_regs_val*256 :
                         wb_edits_hl ? wb_hl_val :
-                        wb_edits_rp ? wb_rp_val;
+                        wb_edits_rp ? wb_rp_val : 
+                        0;
   
     // CARRY FLAGS
     reg [7:0] flags; // sign, zero, 0, auxillary carry, 0, parity, 1, carry
@@ -427,6 +428,7 @@ module main();
         // if(print && halt==0) begin
         //     $write("%c",(reg_wdata&8'b11111111));
         // end
+        halt<=1;
     end
 
 
