@@ -425,9 +425,9 @@ module main();
 
         // check if its one or two or three bytes and adjust pc and shift registers
 
-        // if(print && halt==0) begin
-        //     $write("%c",(reg_wdata&8'b11111111));
-        // end
+        if(wb_control[52]) begin
+            $write("%c",(reg_wdata&8'b11111111));
+        end
         halt<=1;
     end
 
