@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# To run the assembler, type:
+#     assembler.py asm [file.asm] > [file.hex]
+
 import sys
 
 # reading the file
@@ -71,8 +74,8 @@ if subcommand == "asm":
                 db = format((lb << 8 | hb), '04x')
                 labels[op] = db
                 if op in labels_to_update:
-                    instructions[labels_to_update[op]] = instructions[labels_to_update[op]][:-4]
-                    instructions[labels_to_update[op]] += str(db)
+                    instructions[labels_to_update[op]] = instructions[labels_to_update[op]][:-6]
+                    instructions[labels_to_update[op]] += " " + db[0:2]+ " " + db[2:]
                     del labels_to_update[op]
                 continue
             
@@ -397,13 +400,15 @@ if subcommand == "asm":
             if op in one_byte:
                 instructions.append("%0.2x" % (instr))
             elif op in two_byte:
-                instructions.append("%0.4x" % (instr))
+                # instructions.append("%0.4x" % (instr))
+                instructions.append("%0.2x %0.2x" % (instr // 256, instr % 256))
             elif op in three_byte:
-                instructions.append("%0.6x" % (instr))
+                instructions.append("%02x %02x %02x" % (instr // 65536, (instr // 256) % 256, instr % 256))
             line_counter += 1
 
 else:
     print("Bad subcommand option:", subcommand)
 
+print("@0")
 for x in instructions:
     print(x)
