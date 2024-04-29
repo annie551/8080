@@ -2,6 +2,7 @@
 
 import sys
 
+# reading the file
 if len(sys.argv) == 1:
     subcommand = input("Select an operation from [asm, disasm]: ")
     f = input("File path: ")
@@ -9,12 +10,14 @@ else:
     subcommand = sys.argv[1]
     f = sys.argv[2]
     
+# our starting variables to keep track of items
 instructions = []
 pc = 0
 labels = {}
 labels_to_update = {}
 line_counter = 0
 
+# categorizing instructions
 assembly_instructions = [
     "nop", "lxi", "stax", "inx", "inr", "dcr", "mvi", "rlc", "dad", "ldax",
     "dcx", "rrc", "ral", "rar", "rim", "shld", "daa", "lhld", "cma", "sim",
@@ -61,7 +64,6 @@ if subcommand == "asm":
             imm = dest = src = 0
 
             # labels
-
             if op not in assembly_instructions:
                 op = op[:-1]
                 lb = pc & 0xFF
@@ -69,15 +71,12 @@ if subcommand == "asm":
                 db = format((lb << 8 | hb), '04x')
                 labels[op] = db
                 if op in labels_to_update:
-                    # print("instr:", instructions[labels_to_update[op]])
                     instructions[labels_to_update[op]] = instructions[labels_to_update[op]][:-4]
-                    # print("instr:", instructions[labels_to_update[op]])
                     instructions[labels_to_update[op]] += str(db)
-                    # print("instr:", instructions[labels_to_update[op]])
-
                     del labels_to_update[op]
                 continue
             
+            # parsing instructions
             if op == "xchg":
                 instr = 0b11101011
                 pc += 1
@@ -393,11 +392,9 @@ if subcommand == "asm":
                 n = int(args[1]) & 0xF
                 instr = 0b11 << 6 | n << 3 | 0b111
                 pc += 1
-            # else:
-            #     print("Unknown instruction:", op)
-            #     continue
+
+            # printing properly depending on byte size of instruction
             if op in one_byte:
-                # instructions.append("%0.2x    // %s" % (instr, line[:-1]))
                 instructions.append("%0.2x" % (instr))
             elif op in two_byte:
                 instructions.append("%0.4x" % (instr))
