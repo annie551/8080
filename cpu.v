@@ -2,11 +2,17 @@
 
 module main();
 
+    integer i;
     initial begin
         $dumpfile("cpu.vcd");
         $dumpvars(0,main);
-
+        for (i=0;i<2048;i=i+1) begin
+            predictor[i][15:0] = i+2;  // jump target
+            predictor[i][19:16] = 4'b0010;  // valid bit, history bit, taken history, not taken history
+        end
     end
+
+
 
     // clock
     wire clk;
@@ -25,6 +31,7 @@ module main();
 
 
     // read from memory
+    wire[23:0] ins;
     wire[23:0] instruction;
     wire [15:0] out;
     wire [15:0]mem_raddr;
@@ -41,7 +48,7 @@ module main();
     wire replace_SP;
 
 
-    mem memory(clk,pc,instruction,mem_raddr,mem_loaded_data,mem_wen0,mem_waddr,mem_wdata0, mem_wen1,mem_wdata1,pop, push, stack_data, swap, replace_SP, out);
+    mem memory(clk,pc,ins,mem_raddr,mem_loaded_data,mem_wen0,mem_waddr,mem_wdata0, mem_wen1,mem_wdata1,pop, push, stack_data, swap, replace_SP, out);
 
     wire [2:0]reg_raddr0;
     wire[7:0]r_data0;
@@ -70,14 +77,28 @@ module main();
     // registers
     regs registers(clk,reg_raddr0,r_data0,reg_raddr1,r_data1,reg_raddr2,r_data2,reg_raddr3,r_data3,reg_raddr4,r_data4,reg_raddr5,r_data5,reg_wen0,reg_wen1,reg_wen2,reg_wen3,reg_waddr0,reg_wdata0,reg_waddr1,reg_wdata1,reg_waddr2,reg_wdata2,reg_waddr3,reg_wdata3);
 
+    wire interrupt;
+    wire[23:0] interrupt_instruction;
+    interrupter interupter(clk, interrupt, interrupt_instruction);
+
+
+    reg [24:0] predictor[0:16'h07ff];
+    wire[10:0] pc_hash = pc[10:0];
+
+    wire[15:0] prediction=(predictor[pc_hash][19]==0 || predictor[pc_hash][24:20]!=pc[15:11]) ? pc+1 :
+                    (predictor[pc_hash][18]==1 && predictor[pc_hash][17]==1) ? predictor[pc_hash][15:0] : 
+                    (predictor[pc_hash][18]==0 && predictor[pc_hash][16]==1) ? predictor[pc_hash][15:0] : 
+                    pc+1;
 
     // shift registers
     reg f1_v = 1'b1;
-    reg f2_v = 1'b1;
+    reg f2_v = 1'b0;
     reg d_v = 1'b0;
     reg x1_v = 1'b0;
     reg x2_v = 1'b0;
     reg wb_v = 1'b0;
+
+    assign instruction = (justInterrupted) ? interrupt_instruction : ins;
 
     // DECODE
     wire [23:0] d_instruction = instruction;
@@ -125,7 +146,7 @@ module main();
     wire d_cmc = (d_opcode == 8'b00111111);
     wire d_stc = (d_opcode == 8'b00110111);
     wire d_jmp = (d_opcode == 8'b11000011);
-    wire d_jccc = (d_opcode[7:5] == 3'b11) && (d_opcode[2:0] == 3'b010);
+    wire d_jccc = (d_opcode[7:6] == 2'b11) && (d_opcode[2:0] == 3'b010);
     wire d_call = (d_opcode == 8'b11001101);
     wire d_cccc = (d_opcode[7:6] == 2'b11) && (d_opcode[2:0] == 3'b100);
     wire d_ret = (d_opcode == 8'b11001001);
@@ -265,14 +286,14 @@ module main();
                             wb_control[30] || wb_control[31] || wb_control[32] || wb_control[33] ||
                             wb_control[34] || wb_control[35]) && wb_v;
 
-    wire flushed = (((jump || return || subroutine)&&wb_v) || just_returned) ;
+    wire flushed = (((jump || return || subroutine)&&wb_v) || just_returned || interrupting || interrupt_over) ;
 
     assign push = ((x2_control[47] && x2_v) && !flushed) || subroutine;
     assign pop = (wb_control[48] && x2_v && !flushed) || return;
     assign swap = wb_control[49] && x2_v && !flushed;
     assign replace_SP = wb_control[50] && x2_v && !flushed;
 
-    assign stack_data = (subroutine) ? wb_pc+2 :
+    assign stack_data = (subroutine) ? wb_pc+3 :
                         (push) ? {x2_rp1_val, x2_rp2_val} : {x2_regH_val, x2_regL_val};
     
     // updated A value, updating normal register value, updating memory (store)
@@ -346,15 +367,20 @@ module main();
     wire condition_is_true = (condition == 0 && !flags[6]) || (condition == 1 && flags[6]) || (condition == 2 && !flags[0]) || (condition == 3 && flags[0]) || (condition == 4 && !flags[2]) || (condition == 5 && flags[2]) || (condition == 6 && !flags[7]) || (condition == 7 && flags[7]);
 
     // jumping
-    wire [15:0] jump_location = (wb_control[45]) ? wb_instruction[21:19]*8 :
+    wire [15:0] jump_location = (just_returned) ? out :
+                                (wb_control[45]) ? wb_instruction[21:19]*8 :
                                 (wb_control[46]) ? {wb_regH_val, wb_regL_val} :
                                 {wb_instruction[7:0], wb_instruction[15:8]};
     wire jump = (wb_control[39] || wb_control[46] ||(wb_control[40] && condition_is_true)) && wb_v;
     wire subroutine = (wb_control[41] || wb_control[45] ||(wb_control[42] && condition_is_true)) && wb_v;
 
+    wire isBranch = wb_control[39] ||wb_control[40] ||wb_control[41] ||wb_control[42] ||wb_control[43] ||wb_control[44]||wb_control[45] ||wb_control[46];
+
     //returning
     wire return = (wb_control[43] || (wb_control[44] && condition_is_true)) && wb_v;
     reg just_returned;
+
+    wire interrupting = interrupt && interrupt_enabled && !interrupt_in_progress;
 
     // actual value to be written back to register or memory
     wire [15:0] wb_val = wb_edits_A ? wb_A_val[7:0] *256 :
@@ -396,15 +422,23 @@ module main();
 
 
 
-  
+    reg interrupt_enabled=0;
+    reg interrupt_over=0;
+    reg interrupt_in_progress=0;
+    reg justInterrupted=0;
+    reg [15:0] before_interrupt_pc;
+
+
     // CARRY FLAGS
-    reg [7:0] flags; // sign, zero, 0, auxillary carry, 0, parity, 1, carry
+    reg [7:0] flags=8'b00000010; // sign, zero, 0, auxillary carry, 0, parity, 1, carry
     // TODO: when setting carry flag, if addition, take top bit; if subtraction and result is 1, take the reverse of the current carry flag
 
     always @(posedge clk) begin
         if(wb_control[55] && wb_v)begin
             halt<=1;
         end
+
+        justInterrupted<=interrupting;
 
         // feeding wires from decode to execute 1
         x1_control <= d_control;
@@ -453,62 +487,102 @@ module main();
             flags[0] <= 1;
         end
         else begin
-            if (wb_edits_flags) begin
-                flags[5] <= wb_val == 0; // setting ZERO flag
-                flags[6] <= wb_val[7] == 1; // setting SIGN flag
+            if (wb_edits_flags && wb_v) begin
+                flags[6] <= wb_val == 0; // setting ZERO flag
+                flags[7] <= wb_val[7] == 1; // setting SIGN flag
                 flags[2] <= (wb_val[0] + wb_val[1] + wb_val[2] + wb_val[3] + wb_val[4] + wb_val[5] + wb_val[6] + wb_val[7] + 1) % 2; // check PARITY flag
             end
-            if (wb_edits_carry) begin
+            if (wb_edits_carry && wb_v) begin
                 flags[0] <= wb_val[9]; // setting CARRY flag
             end
         end
 
         just_returned<=return;
 
+
+
         // shift registers
         if (flushed) begin
-            if (return) begin
-                f1_v<=0;
+            if (interrupting || interrupt_over) begin
+                if (interrupting) begin
+                    interrupt_over<=0;
+                    interrupt_enabled<=0;
+                    interrupt_in_progress<=1;
+                    f1_v<=1;
+                    f2_v <= 0;
+                    d_v<=1;
+                    x1_v <= 0;
+                    x2_v <= 0;
+                    wb_v <= 0;
+                    before_interrupt_pc<=wb_pc;
+                end
+                if (interrupt_over) begin
+                    interrupt_in_progress<=0;
+                    interrupt_over<=0; 
+                    f1_v<=1;
+                    f2_v <= 0;
+                    d_v<=0;
+                    x1_v <= 0;
+                    x2_v <= 0;
+                    wb_v <= 0;
+                    pc<=before_interrupt_pc+2;
+                end
             end
-            else if (just_returned) begin
-                f1_v<=1;
-                pc<=out;
-            end
-            else begin
-                pc<=jump_location;
+            else begin 
+                if (return) begin
+                    f1_v<=0;
+                    interrupt_over<=1;
 
-            end
-            f2_v <= 0;
-            d_v<=0;
-            x1_v <= 0;
-            x2_v <= 0;
-            wb_v <= 0;
-        end
-        else begin 
-            if(d_is_two_bytes && d_v) begin
-                f2_v <= f1_v;
-                d_v<=0;
-                x1_v <= d_v;
-                x2_v <= x1_v;
-                wb_v <= x2_v;
-                pc<=pc+1;
-            end
-            else if(d_is_three_bytes && d_v) begin
+                end
+                else if (just_returned) begin
+                    f1_v<=1;
+
+                end
+                pc<=jump_location;
                 f2_v <= 0;
                 d_v<=0;
-                x1_v <= d_v;
-                x2_v <= x1_v;
-                wb_v <= x2_v;
-                pc<=pc+1;
+                x1_v <= 0;
+                x2_v <= 0;
+                wb_v <= 0;
+            end
+        end        
+        else begin 
+            if(d_is_two_bytes && d_v) begin
+                if (f2_pc!=d_pc+2) begin
+                    d_v<=0;
+                end
+                else begin
+                    d_v<=f2_v;
+                end
+                f2_v <= f1_v;
+
+                predictor[d_pc[10:0]][19]<=1;
+                predictor[d_pc[10:0]][24:20]<=d_pc[15:11];
+                predictor[d_pc[10:0]][15:0]<=d_pc+2;
+                predictor[d_pc[10:0]][18:16]<=3'b111;
+            end
+            else if(d_is_three_bytes && d_v) begin
+                if (f2_pc!=d_pc+3) begin
+                    f2_v <= 0;
+                    d_v<=0;
+                end
+                else begin
+                    f2_v <= f1_v;
+                    d_v<=f2_v;
+                end
+                predictor[d_pc[10:0]][19]<=1;
+                predictor[d_pc[10:0]][24:20]<=d_pc[15:11];
+                predictor[d_pc[10:0]][15:0]<=d_pc+3;
+                predictor[d_pc[10:0]][18:16]<=3'b111;
             end
             else begin
                 f2_v <= f1_v;
                 d_v <= f2_v;
-                x1_v <= d_v;
-                x2_v <= x1_v;
-                wb_v <= x2_v;
-                pc<=pc+1;
             end
+            pc<=prediction;
+            x1_v <= d_v;
+            x2_v <= x1_v;
+            wb_v <= x2_v;
         end
 
         f2_pc<=pc;
@@ -516,11 +590,19 @@ module main();
         x1_pc<=d_pc;
         x2_pc<=x1_pc;
         wb_pc<=x2_pc;
+ 
+
+        if(wb_v && wb_control[53]) begin
+            interrupt_enabled<=1;
+        end
+        if(wb_v && wb_control[54]) begin
+            interrupt_enabled<=0;
+        end
 
         // check if its one or two or three bytes and adjust pc and shift registers
 
         if(wb_control[52] && wb_v) begin
-            $write("%c",(wb_val&8'b11111111));
+            $write("%c",(wb_accumulator_val&8'b11111111));
         end
     end
 
