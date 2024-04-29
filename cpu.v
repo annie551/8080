@@ -531,14 +531,16 @@ module main();
             else begin 
                 if (return) begin
                     f1_v<=0;
-                    interrupt_over<=1;
+                    interrupt_over<=(interrupt_in_progress);
 
                 end
                 else if (just_returned) begin
                     f1_v<=1;
-
+                    pc<=out;
                 end
-                pc<=jump_location;
+                else begin
+                    pc<=jump_location;
+                end
                 f2_v <= 0;
                 d_v<=0;
                 x1_v <= 0;
